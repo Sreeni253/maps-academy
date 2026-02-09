@@ -52,24 +52,26 @@
     async function callBrain() {
     const statusBox = document.getElementById('status-box');
     try {
+        // This is the "knock" on the Brain's door
         const response = await fetch('https://maps-academy.onrender.com/');
         const data = await response.json(); 
         
-        // This clears the "Online" message and builds a list of your modules
-        let moduleList = `<h3>${data.academy_info.tagline}</h3><ul>`;
+        // This builds the list of your Professional Skills
+        let content = `<h3>${data.academy_info.tagline}</h3><ul style="list-style:none; padding:0;">`;
         
         data.academy_info.modules.forEach(mod => {
-            moduleList += `<li><strong>${mod.title}</strong> - <em>${mod.status}</em></li>`;
+            content += `<li style="margin-bottom:10px;">✅ <strong>${mod.title}</strong>: <em>${mod.status}</em></li>`;
         });
         
-        moduleList += `</ul>`;
-        statusBox.innerHTML = moduleList;
+        content += `</ul>`;
+        statusBox.innerHTML = content;
         
     } catch (error) {
+        // If the Brain doesn't answer, show this
         statusBox.innerText = "The Brain is currently sleeping...";
     }
 }
-// Run the function when the page loads
+// Automatically call the Brain when the page opens
 callBrain();
 
     // Load brain message on page load
