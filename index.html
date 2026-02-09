@@ -49,21 +49,21 @@
   </main>
 
   <script>
-    async function updateBrainMessage() {
-      const messageElement = document.getElementById('brain-message');
-      
-      try {
+    async function callBrain() {
+    const statusBox = document.getElementById('status-box');
+    try {
         const response = await fetch('https://maps-academy.onrender.com/');
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.text();
-        messageElement.textContent = data;
-      } catch (error) {
-        console.error('Brain fetch failed:', error);
-        messageElement.textContent = 'Brain is currently sleeping.';
-      }
+        const data = await response.json(); // We change .text() to .json()
+        
+        // This displays your Tagline and the first module title
+        statusBox.innerHTML = `
+            <h3>${data.academy_info.tagline}</h3>
+            <p>First Module: <strong>${data.academy_info.modules[0].title}</strong></p>
+        `;
+    } catch (error) {
+        statusBox.innerText = "The Brain is currently sleeping...";
     }
+}
 
     // Load brain message on page load
     updateBrainMessage();
