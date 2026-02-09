@@ -1,6 +1,6 @@
 import csv
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -10,6 +10,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @app.route('/')
 def get_soul():
+    # Get the certification filter from the URL (e.g., ?cert=BEE CEM)
+    target_cert = request.args.get('cert', 'BEE CEM') 
+    
     modules = []
     csv_path = os.path.join(BASE_DIR, 'modules.csv')
     
@@ -17,19 +20,20 @@ def get_soul():
         with open(csv_path, mode='r', encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # We skip empty rows and header rows
-                if row.get('Sub-Skill'):
+                # Check if this skill is required (A, S, or AD) for the selected cert
+                level = row.get(target_cert, "").strip()
+                if level in ["A", "S", "AD"]:
                     modules.append({
-                        "title": row['Sub-Skill'],
+                        "title": row.get('Sub-Skill', 'Unnamed Skill'),
                         "category": row.get('Module/Sub-Module', 'General'),
-                        "status": "Verified Professional Skill"
+                        "level": level, # Awareness, Skill, or Advanced
+                        "status": f"Level: {level}"
                     })
             
     return jsonify({
-        "academy_info": {
-            "tagline": "Mapping and Advancing Professional Skills",
-            "modules": modules[:20] # Taking the first 20 for a clean look
-        }
+        "selected_certification": target_cert,
+        "tagline": f"Professional Path: {target_cert}",
+        "modules": modules
     })
 
 if __name__ == "__main__":
