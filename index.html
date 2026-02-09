@@ -10,61 +10,68 @@
     </div>
 
   <script>
-    // 1. New Function to build the menu automatically
+    // This waits for the HTML to be fully loaded before doing anything
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeAcademy();
+    });
+
     async function initializeAcademy() {
         const selector = document.getElementById('cert-selector');
+        
+        // Safety check: if selector is still missing, stop here
+        if (!selector) {
+            console.error("Critical Error: 'cert-selector' element not found in HTML.");
+            return;
+        }
+
         try {
-            // We fetch the first batch of data just to get the column headers
-            const response = await fetch('https://maps-academy.onrender.com/');
-            const data = await response.json();
+            // These are the exact headers from your Skill Matrix CSV
+            const certs = [
+                "BEE CEM", "BEE CEA", "Germany (THM)", "IGBC AP", 
+                "LEED AP", "BREEAM AP", "AEE CEM", "ASHRAE BEAP", 
+                "US (Ivy Tech)", "UK (GTEC)", "Australia (RMIT)", 
+                "India (NISE)", "Schneider U"
+            ];
             
-            // We assume the Brain will eventually send us a list of available certs
-            // For now, let's update the selector with the ones from your CSV
-            const certs = ["BREEAM AP", "LEED AP", "IGBC AP", "BEE CEM", "BEE CEA", "AEE CEM", "ASHRAE BEAP", "Germany (THM)", "US (Ivy Tech)", "UK (GTEC)", "Australia (RMIT)", "India (NISE)", "Schneider U"];
-            
+            // Build the menu
             selector.innerHTML = certs.map(c => `<option value="${c}">${c}</option>`).join('');
             
-            // Load the first one by default
+            // Now that the menu is built, load the data
             callBrain();
-        } catch (e) { console.error("Initialization failed", e); }
+        } catch (e) { 
+            console.error("Initialization failed", e); 
+        }
     }
 
     async function callBrain() {
-    const statusBox = document.getElementById('status-box');
-    const selectedCert = document.getElementById('cert-selector').value;
-    
-    statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Loading Certification Path...</p>";
+        const statusBox = document.getElementById('status-box');
+        const selector = document.getElementById('cert-selector');
+        
+        if (!statusBox || !selector) return;
 
-    try {
-        const response = await fetch(`https://maps-academy.onrender.com/?cert=${encodeURIComponent(selectedCert)}`);
-        const data = await response.json();
-        
-        // SAFETY CHECK: If data or data.modules is missing, stop the error
-        if (!data || !data.modules) {
-            statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>The Brain sent an empty response. Check your CSV column names.</p>";
-            return;
-        }
-        
-        let cardsHTML = '';
-        if (data.modules.length === 0) {
-            cardsHTML = `<p style='grid-column: 1/-1; text-align: center;'>No modules marked A, S, or AD for "${selectedCert}".</p>`;
-        }
+        const selectedCert = selector.value;
+        statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Loading Certification Path...</p>";
 
-        data.modules.forEach(mod => {
-            // ... (rest of your card building logic)
-        });
-        
-        statusBox.innerHTML = cardsHTML;
-    } catch (error) {
-        console.error("Connection Error:", error);
-        statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: red;'>Cannot reach the Academy Brain. Is Render still deploying?</p>";
-    }
-}
+        try {
+            const response = await fetch(`https://maps-academy.onrender.com/?cert=${encodeURIComponent(selectedCert)}`);
+            const data = await response.json();
+            
+            if (!data || !data.modules || data.modules.length === 0) {
+                statusBox.innerHTML = `<p style='grid-column: 1/-1; text-align: center;'>No modules found for "${selectedCert}".</p>`;
+                return;
+            }
+
+            let cardsHTML = '';
+            data.modules.forEach(mod => {
+                let color = "#3498db"; 
+                if(mod.level === "A") color = "#27ae60";  
+                if(mod.level === "S") color = "#f1c40f";  
+                if(mod.level === "AD") color = "#e67e22"; 
 
                 cardsHTML += `
-                    <div style="background: white; border-radius: 12px; border-top: 8px solid ${color}; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="background: white; border-radius: 12px; border-top: 8px solid ${color}; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                         <div style="font-size: 0.7rem; font-weight: bold; color: #7f8c8d; margin-bottom: 5px; text-transform: uppercase;">${mod.category}</div>
-                        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1rem; min-height: 2.4em;">${mod.title}</h3>
+                        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1rem;">${mod.title}</h3>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="background: ${color}22; color: ${color}; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">Level: ${mod.level}</span>
                             <button style="background: #2c3e50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Study</button>
@@ -74,11 +81,8 @@
             });
             statusBox.innerHTML = cardsHTML;
         } catch (error) {
-            statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: red;'>Connection Error.</p>";
+            statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: red;'>Brain connection error.</p>";
         }
     }
-
-    // Start by building the menu
-    initializeAcademy();
 </script>
 </body>
