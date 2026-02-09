@@ -24,40 +24,54 @@
         </div>
 
     <script>
-        const selector = document.getElementById('cert-selector');
-        const statusBox = document.getElementById('status-box');
+    const selector = document.getElementById('cert-selector');
+    const statusBox = document.getElementById('status-box');
 
-        async function loadModules() {
-            const cert = selector.value;
-            statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Loading...</p>";
+    // 1. Fetch the list of all certifications from the CSV columns
+    async function init() {
+        try {
+            const response = await fetch('https://maps-academy.onrender.com/');
+            const data = await response.json();
+            
+            if (data.available_certs) {
+                selector.innerHTML = data.available_certs.map(c => 
+                    `<option value="${c}">${c}</option>`
+                ).join('');
+            }
+            loadModules(); // Load the first one automatically
+        } catch (err) {
+            console.error("Failed to load cert list", err);
+        }
+    }
 
-            try {
-                const response = await fetch(`https://maps-academy.onrender.com/?cert=${encodeURIComponent(cert)}`);
-                const data = await response.json();
-                
-                if (!data.modules || data.modules.length === 0) {
-                    statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>No modules found for this track.</p>";
-                    return;
-                }
+    // 2. Load modules for the chosen certification
+    async function loadModules() {
+        const cert = selector.value;
+        if (!cert) return;
+        
+        statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Loading Path...</p>";
 
-                statusBox.innerHTML = data.modules.map(mod => `
-                    <div style="background: white; border-radius: 8px; border-top: 5px solid #3498db; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        try {
+            const response = await fetch(`https://maps-academy.onrender.com/?cert=${encodeURIComponent(cert)}`);
+            const data = await response.json();
+            
+            statusBox.innerHTML = data.modules.map(mod => {
+                let color = mod.level === "A" ? "#27ae60" : (mod.level === "S" ? "#f1c40f" : "#e67e22");
+                return `
+                    <div style="background: white; border-radius: 8px; border-top: 5px solid ${color}; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                         <small style="color: #7f8c8d; text-transform: uppercase;">${mod.category}</small>
                         <h4 style="margin: 10px 0; color: #2c3e50;">${mod.title}</h4>
-                        <span style="background: #e1f5fe; color: #0288d1; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">Level: ${mod.level}</span>
+                        <span style="background: ${color}22; color: ${color}; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold;">Level: ${mod.level}</span>
                     </div>
-                `).join('');
-
-            } catch (err) {
-                statusBox.innerHTML = "<p style='color: red; grid-column: 1/-1; text-align: center;'>Brain Offline.</p>";
-            }
+                `;
+            }).join('');
+        } catch (err) {
+            statusBox.innerHTML = "<p style='color: red; grid-column: 1/-1; text-align: center;'>Brain Offline.</p>";
         }
+    }
 
-        // Listen for changes
-        selector.addEventListener('change', loadModules);
-
-        // Initial load
-        loadModules();
-    </script>
+    selector.addEventListener('change', loadModules);
+    init();
+</script>
 </body>
 </html>
