@@ -1,7 +1,10 @@
 {
-  "modules": [
-    {"id": 1, "title": "Map Basics", "status": "Ready"},
-    {"id": 2, "title": "GPS Tracking", "status": "Locked"},
-    {"id": 3, "title": "Satellite Imagery", "status": "Coming Soon"}
-  ]
+  "academy_info": {
+    "name": "MAPS Academy",
+    "mission": "Bringing the Soul of Data Online",
+    "modules": [
+      {"id": 1, "title": "Map Basics", "status": "Ready"},
+      {"id": 2, "title": "GPS Tracking", "status": "Locked"}
+    ]
+  }
 }
