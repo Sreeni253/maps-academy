@@ -5,12 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MAPS Academy</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       background-color: #f0f4f8;
       font-family: sans-serif;
       text-align: center;
       padding-top: 100px;
       margin: 0;
+      line-height: 1.6;
     }
 
     .welcome-box {
@@ -28,16 +33,40 @@
       margin-bottom: 20px;
     }
 
-    p {
-      font-size: 1.1em;
+    #brain-message {
       color: #555;
+      font-weight: bold;
+      font-size: 1.1em;
     }
   </style>
 </head>
 <body>
-  <main class="welcome-box">
+  <main class="welcome-box" role="main">
     <h1>Welcome to MAPS Academy</h1>
-    <p>Your professional styling is now LIVE.</p>
+    <p id="brain-message" aria-live="polite">
+      Waiting for the brain to speak...
+    </p>
   </main>
+
+  <script>
+    async function updateBrainMessage() {
+      const messageElement = document.getElementById('brain-message');
+      
+      try {
+        const response = await fetch('/');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.text();
+        messageElement.textContent = data;
+      } catch (error) {
+        console.error('Brain fetch failed:', error);
+        messageElement.textContent = 'Brain is currently sleeping.';
+      }
+    }
+
+    // Load brain message on page load
+    updateBrainMessage();
+  </script>
 </body>
 </html>
