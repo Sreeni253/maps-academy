@@ -9,41 +9,55 @@
         <p style="grid-column: 1/-1; text-align: center;">Loading Academy Modules...</p>
     </div>
 
-    <script>
-        async function callBrain() {
-            const statusBox = document.getElementById('status-box');
-            try {
-                const response = await fetch('https://maps-academy.onrender.com/');
-                const data = await response.json();
+   <script>
+    async function callBrain() {
+        const statusBox = document.getElementById('status-box');
+        try {
+            const response = await fetch('https://maps-academy.onrender.com/');
+            const data = await response.json();
+            
+            let cardsHTML = '';
+
+            // This loops through your Excel rows
+            data.academy_info.modules.forEach(mod => {
+                // 1. Skip rows that don't have a title/skill name
+                if (!mod.title || mod.title.trim() === "") return;
+
+                // 2. Logic to color code by Energy, Safety, or Environment
+                let color = "#3498db"; // Default Blue
+                const searchText = (mod.title + mod.category).toLowerCase();
                 
-                let cardsHTML = '';
+                if(searchText.includes("energy")) color = "#f1c40f";      // Yellow
+                if(searchText.includes("safety")) color = "#e67e22";      // Orange
+                if(searchText.includes("environment")) color = "#27ae60"; // Green
 
-                data.academy_info.modules.forEach(mod => {
-                    // Decide color based on keywords in the title
-                    let color = "#3498db"; // Default Blue
-                    if(mod.title.toLowerCase().includes("energy")) color = "#f1c40f"; // Yellow/Gold
-                    if(mod.title.toLowerCase().includes("environment")) color = "#27ae60"; // Green
-                    if(mod.title.toLowerCase().includes("safety")) color = "#e67e22"; // Orange
-
-                    cardsHTML += `
-                        <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.05); transition: 0.3s; border-top: 8px solid ${color};">
-                            <div style="padding: 20px;">
-                                <div style="text-transform: uppercase; font-size: 0.7rem; font-weight: bold; color: ${color}; margin-bottom: 10px;">${mod.status}</div>
-                                <h3 style="margin: 0 0 15px 0; color: #2c3e50;">${mod.title}</h3>
-                                <button style="background-color: ${color}; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">Explore Module</button>
+                // 3. Build the Card
+                cardsHTML += `
+                    <div style="background: white; border-radius: 12px; border-top: 8px solid ${color}; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="font-size: 0.7rem; font-weight: bold; color: #7f8c8d; margin-bottom: 5px; text-transform: uppercase;">
+                                ${mod.category || 'Professional Skill'}
                             </div>
+                            <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.1rem; line-height: 1.4;">${mod.title}</h3>
                         </div>
-                    `;
-                });
+                        <div style="margin-top: 10px;">
+                            <span style="background: ${color}22; color: ${color}; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">
+                                Verified Skill
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
 
-                statusBox.innerHTML = cardsHTML;
-                document.getElementById('tagline').innerText = data.academy_info.tagline;
+            statusBox.innerHTML = cardsHTML;
+            document.getElementById('tagline').innerText = data.academy_info.tagline;
 
-            } catch (error) {
-                statusBox.innerHTML = `<p style="grid-column: 1/-1; color: #e74c3c;">The Academy Brain is offline. Please try again later.</p>`;
-            }
+        } catch (error) {
+            console.error("Brain Error:", error);
+            statusBox.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #e74c3c;">The Academy Brain is offline. Please try again later.</p>`;
         }
+    }
 
-        callBrain();
-    </script>
+    callBrain();
+</script>
 </body>
