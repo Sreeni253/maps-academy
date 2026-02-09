@@ -8,40 +8,37 @@ CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+def get_csv_data():
+    csv_path = os.path.join(BASE_DIR, 'modules.csv')
+    if not os.path.exists(csv_path):
+        return None, []
+    with open(csv_path, mode='r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        reader.fieldnames = [name.strip() for name in reader.fieldnames]
+        return reader.fieldnames, list(reader)
+
 @app.route('/')
 def get_soul():
-    # 1. Get the cert from the URL, default to 'BEE CEM'
-    target_cert = request.args.get('cert', 'BEE CEM').strip() 
+    target_cert = request.args.get('cert', '').strip()
+    headers, rows = get_csv_data()
     
+    # If no cert is requested, return the list of available cert columns
+    if not target_cert:
+        # Columns 3 onwards are usually the certifications in your CSV
+        cert_list = headers[2:] 
+        return jsonify({"available_certs": cert_list})
+
     modules = []
-    csv_path = os.path.join(BASE_DIR, 'modules.csv')
-    
-    if os.path.exists(csv_path):
-        # Using 'utf-8-sig' handles invisible characters often added by Excel
-        with open(csv_path, mode='r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
+    for row in rows:
+        level = row.get(target_cert, "").strip()
+        if level in ["A", "S", "AD"]:
+            modules.append({
+                "title": row.get('Sub-Skill', 'Unnamed'),
+                "category": row.get('Module/Sub-Module', 'General'),
+                "level": level
+            })
             
-            # Clean up column names (strip spaces)
-            reader.fieldnames = [name.strip() for name in reader.fieldnames]
-            
-            for row in reader:
-                # Get the value for the requested certification column
-                level = row.get(target_cert, "").strip()
-                
-                # If we find A, S, or AD, add it to the list
-                if level in ["A", "S", "AD"]:
-                    modules.append({
-                        "title": row.get('Sub-Skill', 'Unnamed Skill'),
-                        "category": row.get('Module/Sub-Module', 'General'),
-                        "level": level
-                    })
-            
-    # CRUCIAL: Always return a 'modules' key even if it's empty
-    return jsonify({
-        "selected_certification": target_cert,
-        "tagline": f"Path: {target_cert}",
-        "modules": modules  # This prevents the 'undefined' error
-    })
+    return jsonify({"selected_certification": target_cert, "modules": modules})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
