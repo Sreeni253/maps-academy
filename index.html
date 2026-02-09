@@ -30,25 +30,36 @@
     }
 
     async function callBrain() {
-        const statusBox = document.getElementById('status-box');
-        const selectedCert = document.getElementById('cert-selector').value;
+    const statusBox = document.getElementById('status-box');
+    const selectedCert = document.getElementById('cert-selector').value;
+    
+    statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Loading Certification Path...</p>";
+
+    try {
+        const response = await fetch(`https://maps-academy.onrender.com/?cert=${encodeURIComponent(selectedCert)}`);
+        const data = await response.json();
         
-        statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Loading Certification Path...</p>";
+        // SAFETY CHECK: If data or data.modules is missing, stop the error
+        if (!data || !data.modules) {
+            statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>The Brain sent an empty response. Check your CSV column names.</p>";
+            return;
+        }
+        
+        let cardsHTML = '';
+        if (data.modules.length === 0) {
+            cardsHTML = `<p style='grid-column: 1/-1; text-align: center;'>No modules marked A, S, or AD for "${selectedCert}".</p>`;
+        }
 
-        try {
-            const response = await fetch(`https://maps-academy.onrender.com/?cert=${encodeURIComponent(selectedCert)}`);
-            const data = await response.json();
-            
-            let cardsHTML = '';
-            if (data.modules.length === 0) {
-                cardsHTML = `<p style='grid-column: 1/-1; text-align: center;'>No data found for ${selectedCert}. Check CSV columns.</p>`;
-            }
-
-            data.modules.forEach(mod => {
-                let color = "#3498db"; 
-                if(mod.level === "A") color = "#27ae60";  
-                if(mod.level === "S") color = "#f1c40f";  
-                if(mod.level === "AD") color = "#e67e22"; 
+        data.modules.forEach(mod => {
+            // ... (rest of your card building logic)
+        });
+        
+        statusBox.innerHTML = cardsHTML;
+    } catch (error) {
+        console.error("Connection Error:", error);
+        statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: red;'>Cannot reach the Academy Brain. Is Render still deploying?</p>";
+    }
+}
 
                 cardsHTML += `
                     <div style="background: white; border-radius: 12px; border-top: 8px solid ${color}; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
