@@ -9,55 +9,65 @@
         <p style="grid-column: 1/-1; text-align: center;">Loading Academy Modules...</p>
     </div>
 
-   <script>
-    async function callBrain() {
-        const statusBox = document.getElementById('status-box');
+  <script>
+    // 1. New Function to build the menu automatically
+    async function initializeAcademy() {
+        const selector = document.getElementById('cert-selector');
         try {
+            // We fetch the first batch of data just to get the column headers
             const response = await fetch('https://maps-academy.onrender.com/');
             const data = await response.json();
             
+            // We assume the Brain will eventually send us a list of available certs
+            // For now, let's update the selector with the ones from your CSV
+            const certs = ["BREEAM AP", "LEED AP", "IGBC AP", "BEE CEM", "BEE CEA", "AEE CEM", "ASHRAE BEAP", "Germany (THM)", "US (Ivy Tech)", "UK (GTEC)", "Australia (RMIT)", "India (NISE)", "Schneider U"];
+            
+            selector.innerHTML = certs.map(c => `<option value="${c}">${c}</option>`).join('');
+            
+            // Load the first one by default
+            callBrain();
+        } catch (e) { console.error("Initialization failed", e); }
+    }
+
+    async function callBrain() {
+        const statusBox = document.getElementById('status-box');
+        const selectedCert = document.getElementById('cert-selector').value;
+        
+        statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Loading Certification Path...</p>";
+
+        try {
+            const response = await fetch(`https://maps-academy.onrender.com/?cert=${encodeURIComponent(selectedCert)}`);
+            const data = await response.json();
+            
             let cardsHTML = '';
+            if (data.modules.length === 0) {
+                cardsHTML = `<p style='grid-column: 1/-1; text-align: center;'>No data found for ${selectedCert}. Check CSV columns.</p>`;
+            }
 
-            // This loops through your Excel rows
-            data.academy_info.modules.forEach(mod => {
-                // 1. Skip rows that don't have a title/skill name
-                if (!mod.title || mod.title.trim() === "") return;
+            data.modules.forEach(mod => {
+                let color = "#3498db"; 
+                if(mod.level === "A") color = "#27ae60";  
+                if(mod.level === "S") color = "#f1c40f";  
+                if(mod.level === "AD") color = "#e67e22"; 
 
-                // 2. Logic to color code by Energy, Safety, or Environment
-                let color = "#3498db"; // Default Blue
-                const searchText = (mod.title + mod.category).toLowerCase();
-                
-                if(searchText.includes("energy")) color = "#f1c40f";      // Yellow
-                if(searchText.includes("safety")) color = "#e67e22";      // Orange
-                if(searchText.includes("environment")) color = "#27ae60"; // Green
-
-                // 3. Build the Card
                 cardsHTML += `
-                    <div style="background: white; border-radius: 12px; border-top: 8px solid ${color}; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <div style="font-size: 0.7rem; font-weight: bold; color: #7f8c8d; margin-bottom: 5px; text-transform: uppercase;">
-                                ${mod.category || 'Professional Skill'}
-                            </div>
-                            <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.1rem; line-height: 1.4;">${mod.title}</h3>
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <span style="background: ${color}22; color: ${color}; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">
-                                Verified Skill
-                            </span>
+                    <div style="background: white; border-radius: 12px; border-top: 8px solid ${color}; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="font-size: 0.7rem; font-weight: bold; color: #7f8c8d; margin-bottom: 5px; text-transform: uppercase;">${mod.category}</div>
+                        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1rem; min-height: 2.4em;">${mod.title}</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="background: ${color}22; color: ${color}; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">Level: ${mod.level}</span>
+                            <button style="background: #2c3e50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Study</button>
                         </div>
                     </div>
                 `;
             });
-
             statusBox.innerHTML = cardsHTML;
-            document.getElementById('tagline').innerText = data.academy_info.tagline;
-
         } catch (error) {
-            console.error("Brain Error:", error);
-            statusBox.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #e74c3c;">The Academy Brain is offline. Please try again later.</p>`;
+            statusBox.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: red;'>Connection Error.</p>";
         }
     }
 
-    callBrain();
+    // Start by building the menu
+    initializeAcademy();
 </script>
 </body>
