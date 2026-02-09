@@ -6,5 +6,4 @@ def print_academy_status():
 
 
 if __name__ == "__main__":
-    print_academy_status()
 app.run(host='0.0.0.0', port=10000)
