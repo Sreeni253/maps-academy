@@ -1,22 +1,18 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
+import json
 import os
-from typing import Optional
 
 app = Flask(__name__)
 CORS(app)
 
 @app.route('/')
-def get_academy_status() -> str:
-    """Return the current status of MAPS Academy Brain."""
-    return "The MAPS Academy Brain is Online!"
-
-
-def get_port() -> int:
-    """Get the port from environment variable or default to 10000."""
-    return int(os.environ.get("PORT", 10000))
-
+def get_soul():
+    # This tells the brain to open the data file and read it
+    with open('backend/data.json', 'r') as f:
+        data = json.load(f)
+    return jsonify(data)
 
 if __name__ == "__main__":
-    port = get_port()
-    app.run(host='0.0.0.0', port=port, debug=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
