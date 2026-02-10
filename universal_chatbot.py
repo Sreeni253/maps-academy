@@ -553,14 +553,22 @@ def main():
         # Fallback to an emoji if the file is still "hiding"
         sree_icon = "🌳"
     
-    # Display the conversation history
+   # 1. Define icons
+    sree_icon = "https://raw.githubusercontent.com/Sreeni253/maps-academy/main/kalpavruksha.png"
+    enquirer_icon = "💡" # Represents a bright idea/enthusiastic seeker
+
+    # 2. Display conversation history
     for message in st.session_state.messages:
-        avatar = sree_icon if message["role"] == "assistant" else None
+        # Assign the correct icon based on who is speaking
+        if message["role"] == "assistant":
+            avatar = sree_icon
+        else:
+            avatar = enquirer_icon
         
         with st.chat_message(message["role"], avatar=avatar):
             if message["role"] == "assistant":
-                # This adds the name "Sree" in a professional, subtle way
-                st.markdown("**Sree**") 
+                # Using a Blue header for Sree to make it distinct
+                st.markdown(":blue[**Sree**]") 
             st.markdown(message["content"])
     
     # Handle new user input
