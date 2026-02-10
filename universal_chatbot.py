@@ -444,7 +444,7 @@ def main():
         st.header("📤 Local Training Modules")
         manual_files = st.file_uploader(
             "Upload PDF, Word, or Markdown files:", 
-            type=["pdf", "docx", "txt", "md"], 
+            type=None, 
             accept_multiple_files=True
         )
         
