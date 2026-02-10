@@ -537,12 +537,15 @@ def main():
                     source_name = source_name[:27] + "..."
                 st.text(f"✅ {source_name} ({source_info['chunks']} chunks)")
     
-   from streamlit_mic_recorder import mic_recorder
-
-    # --- BRANDED CHAT INTERFACE WITH VOICE ---
+   # --- BRANDED CHAT INTERFACE WITH VOICE ---
+    from streamlit_mic_recorder import mic_recorder
+    
     sree_icon = "https://raw.githubusercontent.com/Sreeni253/maps-academy/main/kalpavruksha.png"
     enquirer_icon = "💡" 
 
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    
     # 1. Display conversation history
     for message in st.session_state.messages:
         avatar = sree_icon if message["role"] == "assistant" else enquirer_icon
@@ -552,27 +555,33 @@ def main():
             st.markdown(message["content"])
 
     # 2. Voice and Text Input Section
-    col1, col2 = st.columns([1, 9])
+    footer_col1, footer_col2 = st.columns([1, 9])
     
-    with col1:
-        # The Microphone Button
+    with footer_col1:
         audio = mic_recorder(start_prompt="🎤", stop_prompt="🛑", key='sree_mic')
 
-    with col2:
+    with footer_col2:
         prompt = st.chat_input("Speak with Sree...")
 
-    # 3. Process Input (Voice or Text)
+    # 3. Process Input
     final_prompt = None
-    if audio:
-        # If the user spoke, we would ideally use a Transcriber here
-        # For now, let's acknowledge the audio input
-        final_prompt = "User sent an audio message." 
+    if audio and audio.get('text'):
+        final_prompt = audio['text']
     elif prompt:
         final_prompt = prompt
 
     if final_prompt:
         st.session_state.messages.append({"role": "user", "content": final_prompt})
-        # ... rest of your chatbot response logic here ...
+        with st.chat_message("user", avatar=enquirer_icon):
+            st.markdown(final_prompt)
+        
+        if hasattr(st.session_state, 'chatbot'):
+            with st.chat_message("assistant", avatar=sree_icon):
+                st.markdown(":blue[**Sree**]")
+                with st.spinner("Sree is consulting the training modules..."):
+                    response = st.session_state.chatbot.get_response(final_prompt)
+                    st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
 if __name__ == "__main__":
     main()
