@@ -537,41 +537,42 @@ def main():
                     source_name = source_name[:27] + "..."
                 st.text(f"✅ {source_name} ({source_info['chunks']} chunks)")
     
-   # --- BRANDED CHAT INTERFACE ---
-    sree_icon = "https://raw.githubusercontent.com/Sreeni253/maps-academy/main/kalpavruksha.png"
-    enquirer_icon = "💡"  # Enthusiastic Knowledge Seeker
+   from streamlit_mic_recorder import mic_recorder
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-    
-    # 1. Display conversation history with Blue branding
+    # --- BRANDED CHAT INTERFACE WITH VOICE ---
+    sree_icon = "https://raw.githubusercontent.com/Sreeni253/maps-academy/main/kalpavruksha.png"
+    enquirer_icon = "💡" 
+
+    # 1. Display conversation history
     for message in st.session_state.messages:
         avatar = sree_icon if message["role"] == "assistant" else enquirer_icon
-        
         with st.chat_message(message["role"], avatar=avatar):
             if message["role"] == "assistant":
                 st.markdown(":blue[**Sree**]") 
             st.markdown(message["content"])
-    
-    # 2. Handle new user input
-    if prompt := st.chat_input("Speak with Sree..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user", avatar=enquirer_icon):
-            st.markdown(prompt)
-        
-        if hasattr(st.session_state, 'chatbot'):
-            with st.chat_message("assistant", avatar=sree_icon):
-                st.markdown(":blue[**Sree**]")
-                with st.spinner("Sree is consulting the training modules..."):
-                    response = st.session_state.chatbot.get_response(prompt)
-                    st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-        else:
-            with st.chat_message("assistant", avatar=sree_icon):
-                st.markdown(":blue[**Sree**]")
-                st.info("Please load your training modules in the sidebar so Sree can share the wealth of knowledge.")
 
-# This ensures the main function runs when the script starts
+    # 2. Voice and Text Input Section
+    col1, col2 = st.columns([1, 9])
+    
+    with col1:
+        # The Microphone Button
+        audio = mic_recorder(start_prompt="🎤", stop_prompt="🛑", key='sree_mic')
+
+    with col2:
+        prompt = st.chat_input("Speak with Sree...")
+
+    # 3. Process Input (Voice or Text)
+    final_prompt = None
+    if audio:
+        # If the user spoke, we would ideally use a Transcriber here
+        # For now, let's acknowledge the audio input
+        final_prompt = "User sent an audio message." 
+    elif prompt:
+        final_prompt = prompt
+
+    if final_prompt:
+        st.session_state.messages.append({"role": "user", "content": final_prompt})
+        # ... rest of your chatbot response logic here ...
 
 if __name__ == "__main__":
     main()
