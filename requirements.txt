@@ -1,0 +1,14 @@
+streamlit
+PyPDF2
+sentence-transformers
+faiss-cpu
+python-docx
+pandas
+python-pptx
+google-oauth2
+google-api-python-client
+requests
+beautifulsoup4
+google-generativeai
+openai
+anthropic
