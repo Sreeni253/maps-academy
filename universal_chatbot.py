@@ -139,9 +139,7 @@ class UniversalChatbot:
                 query = f"({mime_query}) and '{folder_id}' in parents and trashed=false"
             else:
                 query = f"({mime_query}) and trashed=false"
-        	print(f"🔍 DEBUG: Using query: {query}")
-    print(f"🔍 DEBUG: Folder ID: {folder_id}")
-
+        
             results = self.service.files().list(
                 q=query,
                 fields="files(id,name,mimeType,size,modifiedTime)",
