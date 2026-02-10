@@ -541,8 +541,17 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
     
-    # Define Sree's face
-    sree_icon = "kalpavruksha.png"
+   # 1. Define Sree's face with a path check
+    import os
+    
+    # This helps the app find the file in your GitHub folder
+    icon_path = os.path.join(os.getcwd(), "kalpavruksha.png")
+    
+    if os.path.exists(icon_path):
+        sree_icon = icon_path
+    else:
+        # Fallback to an emoji if the file is still "hiding"
+        sree_icon = "🌳"
     
     # Display the conversation history
     for message in st.session_state.messages:
