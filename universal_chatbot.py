@@ -537,57 +537,41 @@ def main():
                     source_name = source_name[:27] + "..."
                 st.text(f"✅ {source_name} ({source_info['chunks']} chunks)")
     
-    # Chat interface
+   # --- BRANDED CHAT INTERFACE ---
+    sree_icon = "https://raw.githubusercontent.com/Sreeni253/maps-academy/main/kalpavruksha.png"
+    enquirer_icon = "💡"  # Enthusiastic Knowledge Seeker
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
     
-   # 1. Define Sree's face with a path check
-    import os
-    
-    # This helps the app find the file in your GitHub folder
-    icon_path = os.path.join(os.getcwd(), "kalpavruksha.png")
-    
-    if os.path.exists(icon_path):
-        sree_icon = icon_path
-    else:
-        # Fallback to an emoji if the file is still "hiding"
-        sree_icon = "🌳"
-    
-   # 1. Define icons
-    sree_icon = "https://raw.githubusercontent.com/Sreeni253/maps-academy/main/kalpavruksha.png"
-    enquirer_icon = "💡" # Represents a bright idea/enthusiastic seeker
-
-    # 2. Display conversation history
+    # 1. Display conversation history with Blue branding
     for message in st.session_state.messages:
-        # Assign the correct icon based on who is speaking
-        if message["role"] == "assistant":
-            avatar = sree_icon
-        else:
-            avatar = enquirer_icon
+        avatar = sree_icon if message["role"] == "assistant" else enquirer_icon
         
         with st.chat_message(message["role"], avatar=avatar):
             if message["role"] == "assistant":
-                # Using a Blue header for Sree to make it distinct
                 st.markdown(":blue[**Sree**]") 
             st.markdown(message["content"])
     
-    # Handle new user input
+    # 2. Handle new user input
     if prompt := st.chat_input("Speak with Sree..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=enquirer_icon):
             st.markdown(prompt)
         
         if hasattr(st.session_state, 'chatbot'):
-            # Sree responds with the Kalpavruksha icon
             with st.chat_message("assistant", avatar=sree_icon):
-                with st.spinner("Sree is gathering knowledge..."):
+                st.markdown(":blue[**Sree**]")
+                with st.spinner("Sree is consulting the training modules..."):
                     response = st.session_state.chatbot.get_response(prompt)
                     st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
         else:
-            # Sree's warning message also gets the icon
             with st.chat_message("assistant", avatar=sree_icon):
-                st.markdown("Please load documents first using the sidebar so I can share my wealth of knowledge.")
+                st.markdown(":blue[**Sree**]")
+                st.info("Please load your training modules in the sidebar so Sree can share the wealth of knowledge.")
+
+# This ensures the main function runs when the script starts
 
 if __name__ == "__main__":
     main()
