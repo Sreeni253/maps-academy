@@ -555,9 +555,12 @@ def main():
     
     # Display the conversation history
     for message in st.session_state.messages:
-        # Use the icon if the message is from the assistant
         avatar = sree_icon if message["role"] == "assistant" else None
+        
         with st.chat_message(message["role"], avatar=avatar):
+            if message["role"] == "assistant":
+                # This adds the name "Sree" in a professional, subtle way
+                st.markdown("**Sree**") 
             st.markdown(message["content"])
     
     # Handle new user input
