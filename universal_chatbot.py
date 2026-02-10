@@ -1,0 +1,532 @@
+import streamlit as st
+import PyPDF2
+import io
+import json
+from sentence_transformers import SentenceTransformer
+import faiss
+import numpy as np
+from docx import Document
+import pandas as pd
+from pptx import Presentation
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+import requests
+from bs4 import BeautifulSoup
+import time
+
+# AI Provider Adapters (This is the ONLY part that changes!)
+class AIProvider:
+    def get_response(self, prompt):
+        raise NotImplementedError
+
+class OpenAIProvider(AIProvider):
+    def __init__(self, api_key):
+        import openai
+        self.client = openai.OpenAI(api_key=api_key)
+    
+    def get_response(self, prompt):
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1000
+        )
+        return response.choices[0].message.content
+
+class GeminiProvider(AIProvider):
+    def __init__(self, api_key):
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    def get_response(self, prompt):
+        response = self.model.generate_content(prompt)
+        return response.text
+
+class ClaudeProvider(AIProvider):
+    def __init__(self, api_key):
+        import anthropic
+        self.client = anthropic.Anthropic(api_key=api_key)
+    
+    def get_response(self, prompt):
+        response = self.client.messages.create(
+            model="claude-3-sonnet-20240229",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.content[0].text
+
+# Universal Chatbot (Same for ALL AI providers!)
+class UniversalChatbot:
+    def __init__(self, ai_provider, credentials_json=None):
+        self.ai_provider = ai_provider
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        
+        # Google Drive setup
+        self.SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+        self.service = None
+        
+        if credentials_json:
+            self._setup_service_account(credentials_json)
+        
+        self.documents = []
+        self.embeddings = None
+        self.index = None
+    
+    def _setup_service_account(self, credentials_json):
+        try:
+            credentials = service_account.Credentials.from_service_account_info(
+                credentials_json, scopes=self.SCOPES
+            )
+            self.service = build('drive', 'v3', credentials=credentials)
+            print("✅ Google Drive service initialized")
+        except Exception as e:
+            print(f"❌ Error setting up Google Drive service: {e}")
+            raise e
+    
+    def scrape_website(self, url):
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            for script in soup(["script", "style", "nav", "footer", "header"]):
+                script.decompose()
+            
+            text = soup.get_text()
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            text = ' '.join(chunk for chunk in chunks if chunk)
+            
+            return text[:10000]
+        except Exception as e:
+            print(f"Error scraping {url}: {e}")
+            return ""
+    
+    def list_files_in_folder(self, folder_id=None, folder_name=None):
+        if not self.service:
+            return []
+        
+        supported_types = {
+            'application/pdf': 'PDF',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+            'application/msword': 'DOC',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+            'application/vnd.ms-excel': 'XLS',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
+            'application/vnd.ms-powerpoint': 'PPT',
+            'application/vnd.google-apps.document': 'Google Doc',
+            'application/vnd.google-apps.spreadsheet': 'Google Sheet',
+            'application/vnd.google-apps.presentation': 'Google Slides'
+        }
+        
+        try:
+            if folder_name and not folder_id:
+                folder_query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder'"
+                folder_results = self.service.files().list(q=folder_query).execute()
+                folders = folder_results.get('files', [])
+                
+                if not folders:
+                    raise Exception(f"Folder '{folder_name}' not found")
+                folder_id = folders[0]['id']
+                print(f"Found folder: {folder_name}")
+            
+            mime_query = " or ".join([f"mimeType='{mime}'" for mime in list(supported_types.keys())[:5]])
+            
+            if folder_id:
+                query = f"({mime_query}) and '{folder_id}' in parents and trashed=false"
+            else:
+                query = f"({mime_query}) and trashed=false"
+        	print(f"🔍 DEBUG: Using query: {query}")
+    print(f"🔍 DEBUG: Folder ID: {folder_id}")
+
+            results = self.service.files().list(
+                q=query,
+                fields="files(id,name,mimeType,size,modifiedTime)",
+                pageSize=15
+            ).execute()
+            
+            files = results.get('files', [])
+            for file in files:
+                file['file_type'] = supported_types.get(file['mimeType'], 'UNKNOWN')
+            
+            return files
+            
+        except Exception as e:
+            print(f"Error listing files: {e}")
+            return []
+    
+    def download_file_content(self, file_id, mime_type):
+        try:
+            if mime_type == 'application/vnd.google-apps.document':
+                request = self.service.files().export(fileId=file_id, 
+                    mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            elif mime_type == 'application/vnd.google-apps.spreadsheet':
+                request = self.service.files().export(fileId=file_id, 
+                    mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            elif mime_type == 'application/vnd.google-apps.presentation':
+                request = self.service.files().export(fileId=file_id, 
+                    mimeType='application/vnd.openxmlformats-officedocument.presentationml.presentation')
+            else:
+                request = self.service.files().get_media(fileId=file_id)
+            
+            return request.execute()
+        except Exception as e:
+            print(f"Error downloading file {file_id}: {e}")
+            return None
+    
+    def extract_text_from_file(self, file_content, file_name, file_type):
+        try:
+            if file_type in ['PDF']:
+                return self._extract_from_pdf(file_content)
+            elif file_type in ['DOCX', 'DOC', 'Google Doc']:
+                return self._extract_from_word(file_content)
+            elif file_type in ['XLSX', 'XLS', 'Google Sheet']:
+                return self._extract_from_excel(file_content)
+            elif file_type in ['PPTX', 'PPT', 'Google Slides']:
+                return self._extract_from_powerpoint(file_content)
+            else:
+                return ""
+        except Exception as e:
+            print(f"Error extracting from {file_name}: {e}")
+            return ""
+    
+    def _extract_from_pdf(self, pdf_content):
+        pdf_file = io.BytesIO(pdf_content)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages[:10]:
+            text += page.extract_text() + "\n"
+        return text
+    
+    def _extract_from_word(self, docx_content):
+        doc_file = io.BytesIO(docx_content)
+        doc = Document(doc_file)
+        text = ""
+        for paragraph in doc.paragraphs[:50]:
+            text += paragraph.text + "\n"
+        return text
+    
+    def _extract_from_excel(self, excel_content):
+        excel_file = io.BytesIO(excel_content)
+        try:
+            excel_data = pd.read_excel(excel_file, sheet_name=None, nrows=100)
+            text = ""
+            for sheet_name, df in excel_data.items():
+                text += f"\n--- Sheet: {sheet_name} ---\n"
+                text += df.head(20).to_string(index=False) + "\n"
+            return text
+        except Exception as e:
+            return ""
+    
+    def _extract_from_powerpoint(self, pptx_content):
+        ppt_file = io.BytesIO(pptx_content)
+        presentation = Presentation(ppt_file)
+        text = ""
+        for slide_num, slide in enumerate(presentation.slides[:10], 1):
+            text += f"\n--- Slide {slide_num} ---\n"
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text:
+                    text += shape.text + "\n"
+        return text
+    
+    def chunk_text(self, text, chunk_size=800, overlap=150):
+        chunks = []
+        start = 0
+        while start < len(text):
+            end = start + chunk_size
+            chunk = text[start:end]
+            if chunk.strip():
+                chunks.append(chunk)
+            start = end - overlap
+        return chunks[:20]
+    
+    def process_all_sources(self, folder_id=None, folder_name=None, website_urls=None):
+        print("🔍 Processing all sources...")
+        
+        self.documents = []
+        processed_files = []
+        processed_sites = []
+        
+        # Process Google Drive files
+        if self.service:
+            files = self.list_files_in_folder(folder_id, folder_name)
+            
+            if files:
+                files = files[:10]
+                print(f"📁 Processing {len(files)} files from Google Drive")
+                
+                for file_info in files:
+                    file_id = file_info['id']
+                    file_name = file_info['name']
+                    mime_type = file_info['mimeType']
+                    file_type = file_info['file_type']
+                    
+                    print(f"📄 Processing {file_type}: {file_name}")
+                    
+                    try:
+                        file_content = self.download_file_content(file_id, mime_type)
+                        
+                        if file_content:
+                            text = self.extract_text_from_file(file_content, file_name, file_type)
+                            
+                            if text.strip():
+                                chunks = self.chunk_text(text)
+                                
+                                for i, chunk in enumerate(chunks):
+                                    self.documents.append({
+                                        'source': file_name,
+                                        'file_type': file_type,
+                                        'content': chunk
+                                    })
+                                
+                                processed_files.append({
+                                    'name': file_name,
+                                    'type': file_type,
+                                    'chunks': len(chunks)
+                                })
+                                print(f"   ✅ Extracted {len(chunks)} chunks")
+                            else:
+                                print(f"   ⚠️  No text extracted")
+                    except Exception as e:
+                        print(f"   ❌ Error: {e}")
+                        continue
+        
+        # Process websites
+        if website_urls:
+            urls = [url.strip() for url in website_urls.split('\n') if url.strip()]
+            if urls:
+                urls = urls[:5]
+                print(f"🌐 Processing {len(urls)} websites")
+                
+                for url in urls:
+                    print(f"🌐 Scraping: {url}")
+                    try:
+                        text = self.scrape_website(url)
+                        if text.strip():
+                            chunks = self.chunk_text(text)
+                            for i, chunk in enumerate(chunks):
+                                self.documents.append({
+                                    'source': url,
+                                    'file_type': 'Website',
+                                    'content': chunk
+                                })
+                            processed_sites.append({
+                                'name': url,
+                                'type': 'Website',
+                                'chunks': len(chunks)
+                            })
+                            print(f"   ✅ Extracted {len(chunks)} chunks")
+                            time.sleep(1)
+                    except Exception as e:
+                        print(f"   ❌ Error: {e}")
+                        continue
+        
+        all_processed = processed_files + processed_sites
+        
+        if not self.documents:
+            raise ValueError("No content could be extracted from any sources")
+        
+        print(f"\n📊 Processing Summary:")
+        print(f"   • Files processed: {len(processed_files)}")
+        print(f"   • Websites processed: {len(processed_sites)}")
+        print(f"   • Total text chunks: {len(self.documents)}")
+        
+        # Create embeddings
+        print("\n🔄 Creating embeddings...")
+        all_chunks = [doc['content'] for doc in self.documents]
+        self.embeddings = self.embedding_model.encode(all_chunks)
+        
+        # Create FAISS index
+        dimension = self.embeddings.shape[1]
+        self.index = faiss.IndexFlatL2(dimension)
+        self.index.add(self.embeddings.astype('float32'))
+        
+        print("✅ Ready to chat!")
+        return all_processed
+    
+    def search_similar_chunks(self, query, k=3):
+        if self.index is None:
+            return []
+        
+        query_embedding = self.embedding_model.encode([query])
+        scores, indices = self.index.search(query_embedding.astype('float32'), k)
+        
+        results = []
+        for i, idx in enumerate(indices[0]):
+            if idx < len(self.documents):
+                results.append({
+                    'content': self.documents[idx]['content'],
+                    'source': self.documents[idx]['source'],
+                    'file_type': self.documents[idx]['file_type'],
+                    'score': scores[0][i]
+                })
+        
+        return results
+    
+    def get_response(self, question):
+        """The ONLY method that uses AI provider - everything else is universal!"""
+        if not self.index:
+            return "Please load documents first."
+        
+        # Search for relevant context (same for all AIs)
+        relevant_chunks = self.search_similar_chunks(question, k=3)
+        context = "\n\n".join([chunk['content'] for chunk in relevant_chunks])
+        sources = list(set([f"{chunk['source']} ({chunk['file_type']})" for chunk in relevant_chunks]))
+        
+        # Create prompt (same for all AIs)
+        prompt = f"""Answer the user's question using the information from these sources. Be direct and natural.
+
+Sources:
+{context}
+
+Question: {question}
+
+Answer naturally:"""
+
+        try:
+            # THIS is the ONLY line that changes between AI providers!
+            answer = self.ai_provider.get_response(prompt)
+            
+            if sources:
+                answer += f"\n\n**Sources:** {', '.join(sources)}"
+            
+            return answer
+            
+        except Exception as e:
+            return f"Error getting response: {str(e)}"
+
+# Streamlit Interface (Universal for ALL AI providers!)
+def main():
+    st.set_page_config(page_title="Universal AI Chatbot", page_icon="🤖")
+    st.title("🤖 Universal AI Chatbot")
+    st.markdown("**Works with OpenAI, Gemini, Claude, or any AI provider!**")
+    
+    # Sidebar configuration
+    with st.sidebar:
+        st.header("🧠 Choose Your AI")
+        
+        ai_choice = st.selectbox(
+            "Select AI Provider:",
+            ["Gemini (Free)", "OpenAI (Paid)", "Claude (Paid)"]
+        )
+        
+        # Get API key based on choice
+        if ai_choice.startswith("Gemini"):
+            api_key = st.text_input("Gemini API Key:", type="password")
+            st.caption("Get FREE key from https://makersuite.google.com/app/apikey")
+        elif ai_choice.startswith("OpenAI"):
+            api_key = st.text_input("OpenAI API Key:", type="password")
+            st.caption("Get key from https://platform.openai.com")
+        else:  # Claude
+            api_key = st.text_input("Claude API Key:", type="password")
+            st.caption("Get key from https://console.anthropic.com")
+        
+        st.header("📁 Google Drive Setup")
+        
+        uploaded_json = st.file_uploader("Upload Google Service Account JSON", type="json")
+        
+        folder_option = st.radio(
+            "Google Drive files:",
+            ["Skip Drive", "Specific Folder by ID", "Specific Folder by Name"]
+        )
+        
+        folder_id = None
+        folder_name = None
+        
+        if folder_option == "Specific Folder by Name":
+            folder_name = st.text_input("Folder Name:")
+        elif folder_option == "Specific Folder by ID":
+            folder_id = st.text_input("Folder ID:")
+        
+        st.header("🌐 Website Sources")
+        
+        website_urls = st.text_area(
+            "Website URLs (one per line):",
+            height=100
+        )
+        
+        if st.button("🚀 Process All Sources"):
+            if api_key:
+                try:
+                    with st.spinner(f"Processing with {ai_choice}..."):
+                        # Create the appropriate AI provider
+                        if ai_choice.startswith("Gemini"):
+                            ai_provider = GeminiProvider(api_key)
+                        elif ai_choice.startswith("OpenAI"):
+                            ai_provider = OpenAIProvider(api_key)
+                        else:  # Claude
+                            ai_provider = ClaudeProvider(api_key)
+                        
+                        # Get credentials if provided
+                        credentials_json = None
+                        if uploaded_json:
+                            credentials_json = json.loads(uploaded_json.getvalue().decode())
+                        
+                        # Initialize universal chatbot
+                        chatbot = UniversalChatbot(ai_provider, credentials_json)
+                        st.session_state.chatbot = chatbot
+                        
+                        # Process all sources
+                        processed_sources = chatbot.process_all_sources(
+                            folder_id=folder_id, 
+                            folder_name=folder_name, 
+                            website_urls=website_urls
+                        )
+                        st.session_state.processed_sources = processed_sources
+                        st.success(f"✅ Processed {len(processed_sources)} sources with {ai_choice}!")
+                        
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+            else:
+                st.error("Please provide API key")
+        
+        # Display processed sources
+        if hasattr(st.session_state, 'processed_sources'):
+            st.subheader("📚 Loaded Sources")
+            for source_info in st.session_state.processed_sources:
+                source_icon = {
+                    'PDF': '📄', 'DOCX': '📝', 'DOC': '📝',
+                    'XLSX': '📊', 'XLS': '📊',
+                    'PPTX': '📊', 'PPT': '📊',
+                    'Google Doc': '📝', 'Google Sheet': '📊', 'Google Slides': '📊',
+                    'Website': '🌐'
+                }.get(source_info['type'], '📄')
+                
+                source_name = source_info['name']
+                if len(source_name) > 30:
+                    source_name = source_name[:27] + "..."
+                
+                st.text(f"{source_icon} {source_name} ({source_info['chunks']} chunks)")
+    
+    # Chat interface (same for all AIs!)
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    
+    if hasattr(st.session_state, 'processed_sources'):
+        st.info("💡 **Ask me about:** Any topic from your loaded documents and websites!")
+    
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+    
+    if prompt := st.chat_input("Ask about your documents and websites..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        if hasattr(st.session_state, 'chatbot'):
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    response = st.session_state.chatbot.get_response(prompt)
+                    st.markdown(response)
+            
+            st.session_state.messages.append({"role": "assistant", "content": response})
+        else:
+            with st.chat_message("assistant"):
+                st.markdown("Please process your sources first using the sidebar.")
+
+if __name__ == "__main__":
+    main()
