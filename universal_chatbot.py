@@ -541,24 +541,33 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
     
+    # Define Sree's face
+    sree_icon = "kalpavruksha.png"
+    
+    # Display the conversation history
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
+        # Use the icon if the message is from the assistant
+        avatar = sree_icon if message["role"] == "assistant" else None
+        with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
     
-    if prompt := st.chat_input("Ask about your training modules..."):
+    # Handle new user input
+    if prompt := st.chat_input("Speak with Sree..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
         
         if hasattr(st.session_state, 'chatbot'):
-            with st.chat_message("assistant"):
-                with st.spinner("Analyzing knowledge..."):
+            # Sree responds with the Kalpavruksha icon
+            with st.chat_message("assistant", avatar=sree_icon):
+                with st.spinner("Sree is gathering knowledge..."):
                     response = st.session_state.chatbot.get_response(prompt)
                     st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
         else:
-            with st.chat_message("assistant"):
-                st.markdown("Please load documents first using the sidebar.")
+            # Sree's warning message also gets the icon
+            with st.chat_message("assistant", avatar=sree_icon):
+                st.markdown("Please load documents first using the sidebar so I can share my wealth of knowledge.")
 
 if __name__ == "__main__":
     main()
