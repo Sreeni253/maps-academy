@@ -423,7 +423,6 @@ def main():
             st.caption("Get key from https://console.anthropic.com")
         
         st.header("📁 Google Drive Setup")
-        
         uploaded_json = st.file_uploader("Upload Google Service Account JSON", type="json")
         
         folder_option = st.radio(
@@ -433,17 +432,20 @@ def main():
         
         folder_id = None
         folder_name = None
-        
         if folder_option == "Specific Folder by Name":
             folder_name = st.text_input("Folder Name:")
         elif folder_option == "Specific Folder by ID":
             folder_id = st.text_input("Folder ID:")
         
         st.header("🌐 Website Sources")
-        
-        website_urls = st.text_area(
-            "Website URLs (one per line):",
-            height=100
+        website_urls = st.text_area("Website URLs (one per line):", height=100)
+
+        # --- NEW: UNIVERSAL FILE UPLOADER SECTION ---
+        st.header("📤 Local Training Modules")
+        manual_files = st.file_uploader(
+            "Upload PDF, Word, or Markdown files:", 
+            type=["pdf", "docx", "txt", "md"], 
+            accept_multiple_files=True
         )
         
         if st.button("🚀 Process All Sources"):
@@ -467,14 +469,59 @@ def main():
                         chatbot = UniversalChatbot(ai_provider, credentials_json)
                         st.session_state.chatbot = chatbot
                         
-                        # Process all sources
-                        processed_sources = chatbot.process_all_sources(
-                            folder_id=folder_id, 
-                            folder_name=folder_name, 
-                            website_urls=website_urls
-                        )
-                        st.session_state.processed_sources = processed_sources
-                        st.success(f"✅ Processed {len(processed_sources)} sources with {ai_choice}!")
+                        # Start processing
+                        all_processed = []
+
+                        # 1. Process Google Drive & Websites (Existing Logic)
+                        try:
+                            drive_web_sources = chatbot.process_all_sources(
+                                folder_id=folder_id, 
+                                folder_name=folder_name, 
+                                website_urls=website_urls
+                            )
+                            all_processed.extend(drive_web_sources)
+                        except:
+                            pass # Continue if Drive/Web is empty
+
+                        # 2. Process Manually Uploaded Files
+                        if manual_files:
+                            for uploaded_file in manual_files:
+                                file_content = uploaded_file.read()
+                                file_name = uploaded_file.name
+                                
+                                # Use existing extraction logic or simple read for MD/TXT
+                                text = ""
+                                if file_name.endswith('.pdf'):
+                                    text = chatbot._extract_from_pdf(file_content)
+                                elif file_name.endswith('.docx'):
+                                    text = chatbot._extract_from_word(file_content)
+                                elif file_name.endswith(('.txt', '.md')):
+                                    text = file_content.decode('utf-8')
+                                
+                                if text.strip():
+                                    chunks = chatbot.chunk_text(text)
+                                    for chunk in chunks:
+                                        chatbot.documents.append({
+                                            'source': file_name,
+                                            'file_type': file_name.split('.')[-1].upper(),
+                                            'content': chunk
+                                        })
+                                    all_processed.append({
+                                        'name': file_name,
+                                        'type': file_name.split('.')[-1].upper(),
+                                        'chunks': len(chunks)
+                                    })
+                        
+                        # Re-initialize index if documents were added manually
+                        if chatbot.documents:
+                            all_chunks = [doc['content'] for doc in chatbot.documents]
+                            chatbot.embeddings = chatbot.embedding_model.encode(all_chunks)
+                            dimension = chatbot.embeddings.shape[1]
+                            chatbot.index = faiss.IndexFlatL2(dimension)
+                            chatbot.index.add(chatbot.embeddings.astype('float32'))
+
+                        st.session_state.processed_sources = all_processed
+                        st.success(f"✅ Ready! Loaded {len(all_processed)} sources.")
                         
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
@@ -485,46 +532,33 @@ def main():
         if hasattr(st.session_state, 'processed_sources'):
             st.subheader("📚 Loaded Sources")
             for source_info in st.session_state.processed_sources:
-                source_icon = {
-                    'PDF': '📄', 'DOCX': '📝', 'DOC': '📝',
-                    'XLSX': '📊', 'XLS': '📊',
-                    'PPTX': '📊', 'PPT': '📊',
-                    'Google Doc': '📝', 'Google Sheet': '📊', 'Google Slides': '📊',
-                    'Website': '🌐'
-                }.get(source_info['type'], '📄')
-                
                 source_name = source_info['name']
                 if len(source_name) > 30:
                     source_name = source_name[:27] + "..."
-                
-                st.text(f"{source_icon} {source_name} ({source_info['chunks']} chunks)")
+                st.text(f"✅ {source_name} ({source_info['chunks']} chunks)")
     
-    # Chat interface (same for all AIs!)
+    # Chat interface
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    
-    if hasattr(st.session_state, 'processed_sources'):
-        st.info("💡 **Ask me about:** Any topic from your loaded documents and websites!")
     
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
     
-    if prompt := st.chat_input("Ask about your documents and websites..."):
+    if prompt := st.chat_input("Ask about your training modules..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
         
         if hasattr(st.session_state, 'chatbot'):
             with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
+                with st.spinner("Analyzing knowledge..."):
                     response = st.session_state.chatbot.get_response(prompt)
                     st.markdown(response)
-            
             st.session_state.messages.append({"role": "assistant", "content": response})
         else:
             with st.chat_message("assistant"):
-                st.markdown("Please process your sources first using the sidebar.")
+                st.markdown("Please load documents first using the sidebar.")
 
 if __name__ == "__main__":
     main()
