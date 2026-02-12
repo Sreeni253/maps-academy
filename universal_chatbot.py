@@ -647,16 +647,16 @@ def main():
             else:
                 st.sidebar.warning("Please upload and process files first!")
 
-        # Display the quiz in the main area
-        if "current_quiz" in st.session_state:
-            st.markdown("---")
-            st.markdown("### 📝 Sree's Graduation Quiz")
-            st.write(st.session_state.current_quiz)
+                # Display the quiz in the main area
+                if "current_quiz" in st.session_state:
+                    st.markdown("---")
+                    st.markdown("### 📝 Sree's Graduation Quiz")
+                    st.write(st.session_state.current_quiz)
         
-            # This is the button that was missing
-            if st.button("🗑️ Clear Quiz and Return to Chat"):
-                del st.session_state.current_quiz
-                st.rerun()
+                    # This is the button that was missing
+                    if st.button("🗑️ Clear Quiz and Return to Chat"):
+                    del st.session_state.current_quiz
+                    st.rerun()
 
     # This is the very last part of the file - keep it at the margin!
 if __name__ == "__main__":
