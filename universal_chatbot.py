@@ -629,5 +629,33 @@ def main():
                     st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
 
+        # --- PASTE THE QUIZ MODULE HERE (Indented 4 spaces) ---
+        st.sidebar.divider()
+        st.sidebar.subheader("🎓 Skill Validation")
+        if st.sidebar.button("📝 Generate Graduation Quiz"):
+            if "chatbot" in st.session_state and st.session_state.chatbot.documents:
+                with st.sidebar:
+                    with st.spinner("Sree is preparing your exam..."):
+                        quiz_query = (
+                            "You are an expert instructor for MAPS Academy. "
+                            "Based on the technical documents provided, generate a 3-question "
+                            "Multiple Choice Quiz. Provide the questions first, "
+                            "followed by an 'Answer Key' section at the bottom."
+                            )
+                        quiz_response = st.session_state.chatbot.ask_question(quiz_query)
+                        st.session_state.current_quiz = quiz_response
+                else:
+                    st.sidebar.warning("Please upload and process files first!")
+
+        # Display the quiz in the main area
+        if "current_quiz" in st.session_state:
+            st.markdown("---")
+            st.markdown("### 📝 Sree's Graduation Quiz")
+            st.write(st.session_state.current_quiz)
+            if st.button("Clear Quiz"):
+                del st.session_state.current_quiz
+                st.rerun()
+
+    # This is the very last part of the file - keep it at the margin!
 if __name__ == "__main__":
     main()
