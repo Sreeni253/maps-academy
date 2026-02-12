@@ -522,47 +522,47 @@ def main():
 
                         # 2. Process Manually Uploaded Files
                        # --- UPDATED FILE PROCESSING SECTION ---
-        if manual_files:
-            for uploaded_file in manual_files:
-                file_content = uploaded_file.read()
-                file_name = uploaded_file.name
+                       if manual_files:
+                       for uploaded_file in manual_files:
+                           file_content = uploaded_file.read()
+                           file_name = uploaded_file.name
                 
-                text = ""
-                if file_name.endswith('.pdf'):
-                    # Landmark 1: Process as standard text
-                    text = chatbot._extract_from_pdf(file_content)
-                    # Landmark 2: ALSO process as technical data for the Engine
-                    chatbot.load_technical_data(file_content, file_name)
+                       text = ""
+                       if file_name.endswith('.pdf'):
+                       # Landmark 1: Process as standard text
+                       text = chatbot._extract_from_pdf(file_content)
+                       # Landmark 2: ALSO process as technical data for the Engine
+                       chatbot.load_technical_data(file_content, file_name)
                     
-                elif file_name.endswith('.docx'):
-                    text = chatbot._extract_from_word(file_content)
+                      elif file_name.endswith('.docx'):
+                      text = chatbot._extract_from_word(file_content)
                     
-                elif file_name.endswith('.csv'):
-                    # Landmark 3: Process CSV purely as technical data
-                    chatbot.load_technical_data(file_content, file_name)
-                    # We skip standard text extraction for CSV to avoid duplicates
-                    text = "" 
+                      elif file_name.endswith('.csv'):
+                      # Landmark 3: Process CSV purely as technical data
+                      chatbot.load_technical_data(file_content, file_name)
+                      # We skip standard text extraction for CSV to avoid duplicates
+                      text = "" 
                     
-                elif file_name.endswith(('.txt', '.md')):
-                    text = file_content.decode('utf-8')
+                      elif file_name.endswith(('.txt', '.md')):
+                      text = file_content.decode('utf-8')
                 
-                # If there is readable text, add it to the general knowledge base
-                if text.strip():
-                    chunks = chatbot.chunk_text(text)
-                    for chunk in chunks:
+                      # If there is readable text, add it to the general knowledge base
+                      if text.strip():
+                      chunks = chatbot.chunk_text(text)
+                      for chunk in chunks:
                         chatbot.documents.append({
                             'source': file_name,
                             'file_type': file_name.split('.')[-1].upper(),
                             'content': chunk
                         })
-                    all_processed.append({
+                      all_processed.append({
                         'name': file_name,
                         'type': file_name.split('.')[-1].upper(),
                         'chunks': len(chunks)
-                    })
+                      })
                         
-                        # Re-initialize index if documents were added manually
-                        if chatbot.documents:
+                      # Re-initialize index if documents were added manually
+                      if chatbot.documents:
                             all_chunks = [doc['content'] for doc in chatbot.documents]
                             chatbot.embeddings = chatbot.embedding_model.encode(all_chunks)
                             dimension = chatbot.embeddings.shape[1]
@@ -572,11 +572,11 @@ def main():
                         st.session_state.processed_sources = all_processed
                         st.success(f"✅ Ready! Loaded {len(all_processed)} sources.")
                         
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-            else:
-                st.error("Please provide API key")
-        
+                      except Exception as e:
+                      st.error(f"❌ Error: {str(e)}")
+                      else:
+                      st.error("Please provide API key")
+          
         # Display processed sources
         if hasattr(st.session_state, 'processed_sources'):
             st.subheader("📚 Loaded Sources")
