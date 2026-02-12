@@ -644,8 +644,8 @@ def main():
                             )
                         quiz_response = st.session_state.chatbot.ask_question(quiz_query)
                         st.session_state.current_quiz = quiz_response
-                else:
-                    st.sidebar.warning("Please upload and process files first!")
+            else:
+                st.sidebar.warning("Please upload and process files first!")
 
         # Display the quiz in the main area
         if "current_quiz" in st.session_state:
