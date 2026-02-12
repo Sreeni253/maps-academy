@@ -140,7 +140,28 @@ class UniversalChatbot:
         except Exception as e:
             st.error(f"Error loading technical model: {e}")
             return False
+
+def get_technical_calculation(self, question, file_name):
+        """Allows Sree to query a specific CSV table for numbers"""
+        if 'technical_tables' in st.session_state and file_name in st.session_state.technical_tables:
+            df = st.session_state.technical_tables[file_name]
             
+            # We give the AI a 'snippet' of the table to help it understand the columns
+            table_summary = df.head(5).to_string()
+            
+            calc_prompt = f"""
+            You are a technical calculation assistant for MAPS Academy.
+            The user is asking: '{question}'
+            
+            Here is the structure of the technical table '{file_name}':
+            {table_summary}
+            
+            Based on this table, find the exact values or perform the calculation requested. 
+            If the exact value isn't there, explain the trend.
+            """
+            return self.ai_provider.get_response(calc_prompt)
+        return "I don't have that specific technical model loaded yet."
+
     def chunk_text(self, text, chunk_size=800, overlap=150):
         chunks = []
         for i in range(0, len(text), chunk_size - overlap):
