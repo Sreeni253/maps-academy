@@ -116,6 +116,31 @@ class UniversalChatbot:
         doc = Document(io.BytesIO(docx_content))
         return "\n".join([p.text for p in doc.paragraphs[:50]])
 
+   def load_technical_data(self, csv_content, file_name):
+        """Processes CSVs as both searchable text AND technical dataframes"""
+        try:
+            df = pd.read_csv(io.BytesIO(csv_content))
+            
+            # 1. Store as searchable text for Sree's 'General Knowledge'
+            text_data = f"Technical Data from {file_name}:\n" + df.to_string()
+            chunks = self.chunk_text(text_data)
+            for chunk in chunks:
+                self.documents.append({
+                    'source': file_name,
+                    'file_type': 'Technical CSV',
+                    'content': chunk
+                })
+            
+            # 2. Store the actual table in memory for 'Calculations'
+            if 'technical_tables' not in st.session_state:
+                st.session_state.technical_tables = {}
+            st.session_state.technical_tables[file_name] = df
+            
+            return True
+        except Exception as e:
+            st.error(f"Error loading technical model: {e}")
+            return False
+            
     def chunk_text(self, text, chunk_size=800, overlap=150):
         chunks = []
         for i in range(0, len(text), chunk_size - overlap):
