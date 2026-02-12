@@ -383,7 +383,32 @@ Answer naturally:"""
 
 # Streamlit Interface (Universal for ALL AI providers!)
 def main():
+    # Keep your original branding
     st.set_page_config(page_title="Universal AI Chatbot", page_icon="🤖")
+
+    # --- SECURITY GATE START ---
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if not st.session_state.authenticated:
+        st.title("🤖 Universal AI Chatbot")
+        st.markdown("### 🔐 Secure Access")
+        
+        # Password Input
+        access_code = st.text_input("Enter Access Code:", type="password")
+        
+        if st.button("Unlock Chatbot"):
+            if access_code == "Sree2026":
+                st.session_state.authenticated = True
+                st.success("Access Granted!")
+                st.rerun() 
+            else:
+                st.error("Incorrect code.")
+        return # This ensures the rest of the 587 lines don't run yet
+    # --- SECURITY GATE END ---
+
+    # The rest of your original code continues below...
+
     st.title("🤖 Universal AI Chatbot")
     st.markdown("**Works with OpenAI, Gemini, Claude, or any AI provider!**")
     
