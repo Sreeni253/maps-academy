@@ -653,10 +653,12 @@ def main():
                     st.markdown("### 📝 Sree's Graduation Quiz")
                     st.write(st.session_state.current_quiz)
         
-                    # This is the button that was missing
-                    if st.button("🗑️ Clear Quiz and Return to Chat"):
+                    # We add a unique key so the button 'sticks' to the screen
+                    if st.button("🗑️ Clear Quiz and Return to Chat", key="clear_quiz_btn"):
                         del st.session_state.current_quiz
                         st.rerun()
+
+                        # These stay at the very left edge
 
     # This is the very last part of the file - keep it at the margin!
 if __name__ == "__main__":
