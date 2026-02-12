@@ -230,39 +230,34 @@ class UniversalChatbot:
                     text += shape.text + "\n"
         return text
 
-    # POWER 1: Handling Technical Tables (CSV)
-    def load_technical_data(self, csv_content, file_name):
+   def load_technical_data(self, content, name):
+        """Processes CSV and PDF technical tables for the Universal AI Chatbot"""
         try:
-            df = pd.read_csv(io.BytesIO(csv_content))
-            # Save the raw table to session state for future calculations
-            if 'technical_tables' not in st.session_state:
-                st.session_state.technical_tables = {}
-            st.session_state.technical_tables[file_name] = df
+            ext = name.split('.')[-1].lower()
+            if ext == 'csv':
+                df = pd.read_csv(io.BytesIO(content))
+                text_data = f"Technical Table (CSV) {name}:\n" + df.to_string()
+            elif ext == 'pdf':
+                # Labels it correctly for the Universal AI Chatbot logic
+                text_data = f"Technical Table (PDF Extract) {name}:\n" + self._extract_from_pdf(content)
             
-            # Convert table to text so the AI can "read" the data ranges
-            text_data = f"Technical Table {file_name}:\n" + df.to_string()
+            # Store it so the Universal AI Chatbot knows this is "Authority Data"
             for chunk in self.chunk_text(text_data):
                 self.documents.append({
-                    'source': file_name, 
-                    'file_type': 'CSV', 
+                    'source': name, 
+                    'file_type': 'Technical Table', 
                     'content': chunk
                 })
-            print(f"    ✅ Technical data loaded from {file_name}")
+            print(f"    ✅ Technical data loaded into Universal AI Chatbot from {name}")
         except Exception as e:
-            print(f"    ❌ CSV Error: {e}")
-
-    # POWER 2: The Engineering Authority Logic
-    def universal_technical_engine(self, query):
-        """Forces the AI to reference international standards and technical data"""
-        authority_prompt = f"""
-        You are acting as the MAPS Academy Technical Engine.
-        Using the provided technical files and referencing international standards 
-        (such as UN SDGs, GlobalSpec, and OSHA), provide a precise answer for: {query}.
-        If data is available in the loaded CSVs, use it for calculations.
-        """
-        return self.get_response(authority_prompt)
+            print(f"    ❌ Data Load Error: {e}")
     
-    def chunk_text(self, text, chunk_size=800, overlap=150):
+    def universal_technical_engine(self, query):
+        """The brain that connects your data to Global Standards"""
+        authority_prompt = f"Using technical files and standards (UN SDGs, GlobalSpec, OSHA), solve: {query}"
+        return self.get_response(authority_prompt)
+        
+     def chunk_text(self, text, chunk_size=800, overlap=150):
         chunks = []
         start = 0
         while start < len(text):
