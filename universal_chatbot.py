@@ -257,7 +257,7 @@ class UniversalChatbot:
         authority_prompt = f"Using technical files and standards (UN SDGs, GlobalSpec, OSHA), solve: {query}"
         return self.get_response(authority_prompt)
         
-     def chunk_text(self, text, chunk_size=800, overlap=150):
+    def chunk_text(self, text, chunk_size=800, overlap=150):
         chunks = []
         start = 0
         while start < len(text):
