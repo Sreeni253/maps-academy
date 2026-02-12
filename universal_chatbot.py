@@ -230,7 +230,7 @@ class UniversalChatbot:
                     text += shape.text + "\n"
         return text
 
-   def load_technical_data(self, content, name):
+    def load_technical_data(self, content, name):
         """Processes CSV and PDF technical tables for the Universal AI Chatbot"""
         try:
             ext = name.split('.')[-1].lower()
