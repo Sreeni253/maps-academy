@@ -652,7 +652,9 @@ def main():
             st.markdown("---")
             st.markdown("### 📝 Sree's Graduation Quiz")
             st.write(st.session_state.current_quiz)
-            if st.button("Clear Quiz"):
+        
+            # This is the button that was missing
+            if st.button("🗑️ Clear Quiz and Return to Chat"):
                 del st.session_state.current_quiz
                 st.rerun()
 
