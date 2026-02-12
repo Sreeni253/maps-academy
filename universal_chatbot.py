@@ -229,6 +229,38 @@ class UniversalChatbot:
                 if hasattr(shape, "text") and shape.text:
                     text += shape.text + "\n"
         return text
+
+    # POWER 1: Handling Technical Tables (CSV)
+    def load_technical_data(self, csv_content, file_name):
+        try:
+            df = pd.read_csv(io.BytesIO(csv_content))
+            # Save the raw table to session state for future calculations
+            if 'technical_tables' not in st.session_state:
+                st.session_state.technical_tables = {}
+            st.session_state.technical_tables[file_name] = df
+            
+            # Convert table to text so the AI can "read" the data ranges
+            text_data = f"Technical Table {file_name}:\n" + df.to_string()
+            for chunk in self.chunk_text(text_data):
+                self.documents.append({
+                    'source': file_name, 
+                    'file_type': 'CSV', 
+                    'content': chunk
+                })
+            print(f"    ✅ Technical data loaded from {file_name}")
+        except Exception as e:
+            print(f"    ❌ CSV Error: {e}")
+
+    # POWER 2: The Engineering Authority Logic
+    def universal_technical_engine(self, query):
+        """Forces the AI to reference international standards and technical data"""
+        authority_prompt = f"""
+        You are acting as the MAPS Academy Technical Engine.
+        Using the provided technical files and referencing international standards 
+        (such as UN SDGs, GlobalSpec, and OSHA), provide a precise answer for: {query}.
+        If data is available in the loaded CSVs, use it for calculations.
+        """
+        return self.get_response(authority_prompt)
     
     def chunk_text(self, text, chunk_size=800, overlap=150):
         chunks = []
