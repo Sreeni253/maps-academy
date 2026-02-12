@@ -222,7 +222,35 @@ def main():
         
         st.header("📤 Training Modules")
         manual_files = st.file_uploader("Upload PDF or Word files:", accept_multiple_files=True)
+       
+        # --- GRADUATION QUIZ SECTION ---
+        st.divider()
+        st.subheader("🎓 Knowledge Wealth")
         
+        # Only show the button if a module has been loaded
+        if st.button("📝 Start Module Quiz"):
+            if hasattr(st.session_state, 'chatbot'):
+                with st.chat_message("assistant", avatar=sree_icon):
+                    st.markdown(":blue[**Sree**]")
+                    with st.spinner("Sree is preparing your knowledge check..."):
+                        # Sree looks at the specific files you uploaded to create the quiz
+                        quiz_prompt = """
+                        You are Sree, the MAPS Academy mentor. 
+                        Based ONLY on the uploaded technical modules, generate 3 multiple-choice questions.
+                        - Question 1: Fundamental Concept
+                        - Question 2: Technical Calculation/Detail
+                        - Question 3: Troubleshooting or Application
+                        
+                        Format: Provide questions and options (A, B, C, D). 
+                        Do not provide the answers yet. Encourage the student to 'Invest their knowledge'.
+                        """
+                        response = st.session_state.chatbot.get_response(quiz_prompt)
+                        st.markdown(response)
+                
+                # Save to history so the student can reply to it
+                st.session_state.messages.append({"role": "assistant", "content": response})
+            else:
+                st.warning("Please load a Training Module (PDF/CSV) before taking the quiz.")
         if st.button("🚀 Process All Sources"):
             if api_key:
                 with st.spinner("Sree is gathering knowledge..."):
