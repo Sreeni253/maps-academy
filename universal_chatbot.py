@@ -655,8 +655,8 @@ def main():
         
                     # This is the button that was missing
                     if st.button("🗑️ Clear Quiz and Return to Chat"):
-                    del st.session_state.current_quiz
-                    st.rerun()
+                        del st.session_state.current_quiz
+                        st.rerun()
 
     # This is the very last part of the file - keep it at the margin!
 if __name__ == "__main__":
