@@ -1,3 +1,9 @@
+import sys
+import os
+
+# This tells your chatbot to look inside the 'backend' folder for the academy code
+sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
+import academy_logic
 import streamlit as st
 import PyPDF2
 import io
