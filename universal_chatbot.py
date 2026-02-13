@@ -661,7 +661,7 @@ def main():
         st.write(st.session_state.current_quiz)
             
         # This button is now on the 'Main Stage' and will stay visible
-        if st.button("🗑️ Clear Quiz and Return to Chat", key="clear_quiz_permanent"):
+        if st.button("🗑️ Clear Quiz and Return to Chat", key="final_close_btn"):
             del st.session_state.current_quiz
             st.rerun()
         # --- END COPY ---
