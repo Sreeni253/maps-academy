@@ -443,9 +443,19 @@ def main():
     # The rest of your original code continues below...
 
     st.title("🤖 Universal AI Chatbot")
-    st.markdown("**Works with OpenAI, Gemini, Claude, or any AI provider!**")
+    # --- THE ACADEMY ENGINE ---
+    # This checks if the user has clicked an Academy step in the sidebar
+    selected_step = st.session_state.get('academy_step')
+
+    if selected_step:
+        # This runs your special logic from the backend folder
+        academy_logic.execute_academy_step(selected_step, st.session_state.get('manual_text', ''))
+        st.divider() # Adds a clean line between Academy and Chat
+    else:
+        st.info("Select a Step from the 'Skill Validation' sidebar to begin your Maps Academy training.")
+        st.markdown("**Works with OpenAI, Gemini, Claude, or any AI provider!**")
     
-    # Sidebar configuration
+   # Sidebar configuration
     with st.sidebar:
         st.header("🧠 Choose Your AI")
         
@@ -465,6 +475,28 @@ def main():
             api_key = st.text_input("Claude API Key:", type="password")
             st.caption("Get key from https://console.anthropic.com")
         
+        # --- NEW: MAPS ACADEMY CONTROLS INSERTED HERE ---
+        st.divider()
+        st.header("🎓 Maps Academy")
+        
+        if st.button("📊 Step 1: Generate Presentation"):
+            st.session_state['academy_step'] = "Step 1: Fixed Presentation"
+            st.rerun()
+
+        if st.button("👨‍🏫 Step 2: Open Tutor Mode"):
+            st.session_state['academy_step'] = "Step 2: The Tutor"
+            st.rerun()
+
+        if st.button("🎓 Step 3: Generate Graduation Quiz"):
+            st.session_state['academy_step'] = "Step 3: Graduation Quiz"
+            st.rerun()
+
+        if st.button("💬 Return to Chat"):
+            st.session_state['academy_step'] = None
+            st.rerun()
+        st.divider()
+        # -----------------------------------------------
+
         st.header("📁 Google Drive Setup")
         uploaded_json = st.file_uploader("Upload Google Service Account JSON", type="json")
         
