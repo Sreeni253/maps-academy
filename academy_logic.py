@@ -23,19 +23,18 @@ def execute_academy_step(step, manual_content):
         elif step == "Step 3: Graduation Quiz":
             st.markdown("### 🎓 Maps Academy: Skill Validation")
             
+            # We check if a quiz already exists for this session
             if "current_quiz" not in st.session_state:
-                # This is the 'Genie' move: 
-                # We ask the AI to generate questions BASED on the uploaded manual
-                with st.spinner("Sree is generating your custom validation quiz..."):
-                    # This calls your AI function (replace 'get_ai_response' with your actual function name)
-                    quiz_content = get_ai_response(f"Generate 3 difficult multiple-choice questions based on this manual: {manual_content}")
-                    st.session_state.current_quiz = quiz_content
+                st.info("Sree is preparing your validation questions based on the manual...")
+                # This is a placeholder - the actual generation happens in your main chatbot
+                st.write("Please click 'Generate Quiz' to begin.")
             
-            st.markdown(st.session_state.current_quiz)
-            
-            if st.button("🗑️ Clear Quiz and Return to Chat", key="module_close_btn"):
-                del st.session_state.current_quiz
-                st.rerun()
+            if "current_quiz" in st.session_state:
+                st.markdown(st.session_state.current_quiz)
+                
+                if st.button("🗑️ Clear Quiz and Return to Chat", key="module_close_btn"):
+                    del st.session_state.current_quiz
+                    st.rerun()
             else:
                 st.write("Click 'Generate Graduation Quiz' in the sidebar to start.")
 
