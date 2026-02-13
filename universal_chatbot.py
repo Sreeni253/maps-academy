@@ -612,15 +612,15 @@ def main():
                         chatbot.index.add(chatbot.embeddings.astype('float32'))
 
                         # --- PASTE HERE ---
-                        st.session_state.processed_sources = all_processed
-                        st.session_state['manual_text'] = "\n".join(all_processed) # <--- ADD THIS
+                            st.session_state.processed_sources = all_processed
+                            st.session_state['manual_text'] = "\n".join([item['content'] for item in all_processed if isinstance(item, dict) and 'content' in item])
                         
-                        st.success(f"✅ Ready! Loaded {len(all_processed)} sources.")
+                            st.success(f"✅ Ready! Loaded {len(all_processed)} sources.")
                                                 
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-            else:
-                st.error("Please provide API key")
+                        except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+                    else:
+                        st.error("Please provide API key")
           
         # Display processed sources
         if hasattr(st.session_state, 'processed_sources'):
