@@ -609,9 +609,14 @@ def main():
                             chatbot.index = faiss.IndexFlatL2(dimension)
                             chatbot.index.add(chatbot.embeddings.astype('float32'))
 
+                        chatbot.index.add(chatbot.embeddings.astype('float32'))
+
+                        # --- PASTE HERE ---
                         st.session_state.processed_sources = all_processed
-                        st.success(f"✅ Ready! Loaded {len(all_processed)} sources.")
+                        st.session_state['manual_text'] = "\n".join(all_processed) # <--- ADD THIS
                         
+                        st.success(f"✅ Ready! Loaded {len(all_processed)} sources.")
+                                                
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
             else:
