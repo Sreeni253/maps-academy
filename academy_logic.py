@@ -29,8 +29,18 @@ def execute_academy_step(step, manual_content):
                 st.success("📝 **Next Step:** Move to 'Step 2: The Tutor' to ask specific questions about this material.")
             
         elif step == "Step 2: The Tutor":
-            st.markdown("### 👨‍🏫 Sree: Expert Energy Tutor")
-            st.info("I am now focused strictly on your uploaded manual. Ask me anything!")
+            st.markdown("### 👨‍🏫 Maps Academy: Expert Tutor Mode")
+            st.success("Sree is now focused strictly on your technical manual. Ask any question below!")
+            
+            with st.expander("💡 How to talk to your Tutor"):
+                st.write("""
+                * *Novice:* 'Can you explain the basic parts of this system?'
+                * *Intermediate:* 'What are the main maintenance risks mentioned?'
+                * *Professional:* 'How can I optimize this for maximum energy wealth?'
+                """)
+            
+            # This reminds Sree (via your chatbot prompt) to stay within the file boundaries
+            st.info("⚠️ Sree will not use outside internet info; only the wealth found in your uploaded manual.")
             
         elif step == "Step 3: Graduation Quiz":
             st.markdown("### 🎓 Maps Academy: Skill Validation")
