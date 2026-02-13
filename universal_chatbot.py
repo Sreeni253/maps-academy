@@ -442,15 +442,20 @@ def main():
 
     # The rest of your original code continues below...
 
-    st.title("🤖 Universal AI Chatbot")
     # --- THE ACADEMY ENGINE ---
-    # This checks if the user has clicked an Academy step in the sidebar
     selected_step = st.session_state.get('academy_step')
 
+    # This pulls the text from your chatbot's processed sources
+    if "chatbot" in st.session_state and st.session_state.chatbot.all_text:
+        manual_content = st.session_state.chatbot.all_text
+    else:
+        # Fallback to the variable we just created
+        manual_content = st.session_state.get('manual_text', '')
+
     if selected_step:
-        # This runs your special logic from the backend folder
-        academy_logic.execute_academy_step(selected_step, st.session_state.get('manual_text', ''))
-        st.divider() # Adds a clean line between Academy and Chat
+        import academy_logic
+        academy_logic.execute_academy_step(selected_step, manual_content)
+        st.divider()
     else:
         st.info("Select a Step from the 'Skill Validation' sidebar to begin your Maps Academy training.")
         st.markdown("**Works with OpenAI, Gemini, Claude, or any AI provider!**")
