@@ -11,10 +11,22 @@ def execute_academy_step(step, manual_content):
 
     try:
         if step == "Step 1: Fixed Presentation":
-            st.markdown("### 📊 Energy Academy: Professional Presentation")
-            # This triggers a specific structured summary
+            st.markdown("### 📊 Maps Academy: Professional Presentation")
             st.write("---")
-            # Logic for presentation goes here
+            
+            # We check if Sree has already 'Forged' the presentation for this file
+            if "current_presentation" not in st.session_state:
+                st.info("Sree is forging your 3-Level Presentation... please wait.")
+                # When you click the 'Speak with Sree' button, use this prompt:
+                # "Based on the uploaded manual, create a Fixed Presentation with 3 levels: 
+                # Level 1 (Novice), Level 2 (Intermediate), and Professional (Wealth-Saving).
+                # Use bold headers and focus on energy efficiency."
+            
+            if "current_presentation" in st.session_state:
+                st.markdown(st.session_state.current_presentation)
+                
+                # A reminder for the student
+                st.success("📝 **Next Step:** Move to 'Step 2: The Tutor' to ask specific questions about this material.")
             
         elif step == "Step 2: The Tutor":
             st.markdown("### 👨‍🏫 Sree: Expert Energy Tutor")
