@@ -2,9 +2,9 @@ import sys
 import os
 
 # This tells your chatbot to look inside the 'backend' folder for the academy code
-
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 import academy_logic
+
 import streamlit as st
 import PyPDF2
 import io
@@ -44,7 +44,7 @@ class GeminiProvider(AIProvider):
     def __init__(self, api_key):
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
 
     def get_response(self, prompt):
         response = self.model.generate_content(prompt)
@@ -445,21 +445,24 @@ def main():
     # --- SECURITY GATE END ---
     
     # The rest of your original code continues below...
-    
+
+    st.title("🤖 Universal AI Chatbot")
+    st.markdown("**Works with OpenAI, Gemini, Claude, or any AI provider!**")
+
     # --- THE ACADEMY ENGINE ---
+    # This checks if the user has clicked an Academy step in the sidebar
     selected_step = st.session_state.get('academy_step')
-    
-    # This pulls the text from your chatbot's processed sources
+
+    # Smart content retrieval: Checks the chatbot object FIRST, then the fallback variable
     if "chatbot" in st.session_state and hasattr(st.session_state.chatbot, 'all_text') and st.session_state.chatbot.all_text:
         manual_content = st.session_state.chatbot.all_text
     else:
-        # Fallback to the variable we just created
         manual_content = st.session_state.get('manual_text', '')
-    
+
     if selected_step:
-        import academy_logic
+        # This runs your special logic from the backend folder
         academy_logic.execute_academy_step(selected_step, manual_content)
-        st.divider()
+        st.divider() # Adds a clean line between Academy and Chat
     else:
         st.info("Select a Step from the 'Skill Validation' sidebar to begin your Maps Academy training.")
         st.markdown("**Works with OpenAI, Gemini, Claude, or any AI provider!**")
