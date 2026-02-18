@@ -56,4 +56,7 @@ def execute_academy_step(step, manual_content):
                 
                 if st.button("🗑️ Clear Quiz and Return to Chat", key="module_close_btn"):
                     del st.session_state.current_quiz
-                    st.rerun()
+                    try:
+                        st.rerun()
+                    except Exception as e:
+                        pass
