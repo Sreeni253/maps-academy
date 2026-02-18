@@ -2,6 +2,7 @@ import sys
 import os
 
 # This tells your chatbot to look inside the 'backend' folder for the academy code
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 import academy_logic
 import streamlit as st
@@ -21,6 +22,7 @@ from bs4 import BeautifulSoup
 import time
 
 # AI Provider Adapters (This is the ONLY part that changes!)
+
 class AIProvider:
     def get_response(self, prompt):
         raise NotImplementedError
@@ -29,7 +31,7 @@ class OpenAIProvider(AIProvider):
     def __init__(self, api_key):
         import openai
         self.client = openai.OpenAI(api_key=api_key)
-    
+
     def get_response(self, prompt):
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -43,7 +45,7 @@ class GeminiProvider(AIProvider):
         import google.generativeai as genai
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-2.5-flash')
-    
+
     def get_response(self, prompt):
         response = self.model.generate_content(prompt)
         return response.text
@@ -52,7 +54,7 @@ class ClaudeProvider(AIProvider):
     def __init__(self, api_key):
         import anthropic
         self.client = anthropic.Anthropic(api_key=api_key)
-    
+
     def get_response(self, prompt):
         response = self.client.messages.create(
             model="claude-3-sonnet-20240229",
@@ -62,18 +64,19 @@ class ClaudeProvider(AIProvider):
         return response.content[0].text
 
 # Universal Chatbot (Same for ALL AI providers!)
+
 class UniversalChatbot:
     def __init__(self, ai_provider, credentials_json=None):
         self.ai_provider = ai_provider
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        
+
         # Google Drive setup
         self.SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
         self.service = None
-        
+    
         if credentials_json:
             self._setup_service_account(credentials_json)
-        
+    
         self.documents = []
         self.embeddings = None
         self.index = None
@@ -97,15 +100,15 @@ class UniversalChatbot:
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, 'html.parser')
-            
+    
             for script in soup(["script", "style", "nav", "footer", "header"]):
                 script.decompose()
-            
+    
             text = soup.get_text()
             lines = (line.strip() for line in text.splitlines())
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
             text = ' '.join(chunk for chunk in chunks if chunk)
-            
+    
             return text[:10000]
         except Exception as e:
             print(f"Error scraping {url}: {e}")
@@ -114,7 +117,7 @@ class UniversalChatbot:
     def list_files_in_folder(self, folder_id=None, folder_name=None):
         if not self.service:
             return []
-        
+    
         supported_types = {
             'application/pdf': 'PDF',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
@@ -127,37 +130,37 @@ class UniversalChatbot:
             'application/vnd.google-apps.spreadsheet': 'Google Sheet',
             'application/vnd.google-apps.presentation': 'Google Slides'
         }
-        
+    
         try:
             if folder_name and not folder_id:
                 folder_query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder'"
                 folder_results = self.service.files().list(q=folder_query).execute()
                 folders = folder_results.get('files', [])
-                
+    
                 if not folders:
                     raise Exception(f"Folder '{folder_name}' not found")
                 folder_id = folders[0]['id']
                 print(f"Found folder: {folder_name}")
-            
+    
             mime_query = " or ".join([f"mimeType='{mime}'" for mime in list(supported_types.keys())[:5]])
-            
+    
             if folder_id:
                 query = f"({mime_query}) and '{folder_id}' in parents and trashed=false"
             else:
                 query = f"({mime_query}) and trashed=false"
-        
+    
             results = self.service.files().list(
                 q=query,
                 fields="files(id,name,mimeType,size,modifiedTime)",
                 pageSize=15
             ).execute()
-            
+    
             files = results.get('files', [])
             for file in files:
                 file['file_type'] = supported_types.get(file['mimeType'], 'UNKNOWN')
-            
+    
             return files
-            
+    
         except Exception as e:
             print(f"Error listing files: {e}")
             return []
@@ -175,7 +178,7 @@ class UniversalChatbot:
                     mimeType='application/vnd.openxmlformats-officedocument.presentationml.presentation')
             else:
                 request = self.service.files().get_media(fileId=file_id)
-            
+    
             return request.execute()
         except Exception as e:
             print(f"Error downloading file {file_id}: {e}")
@@ -235,7 +238,7 @@ class UniversalChatbot:
                 if hasattr(shape, "text") and shape.text:
                     text += shape.text + "\n"
         return text
-
+    
     def load_technical_data(self, content, name):
         """Processes CSV and PDF technical tables for the Universal AI Chatbot"""
         try:
@@ -246,7 +249,7 @@ class UniversalChatbot:
             elif ext == 'pdf':
                 # Labels it correctly for the Universal AI Chatbot logic
                 text_data = f"Technical Table (PDF Extract) {name}:\n" + self._extract_from_pdf(content)
-            
+    
             # Store it so the Universal AI Chatbot knows this is "Authority Data"
             for chunk in self.chunk_text(text_data):
                 self.documents.append({
@@ -262,7 +265,7 @@ class UniversalChatbot:
         """The brain that connects your data to Global Standards"""
         authority_prompt = f"Using technical files and standards (UN SDGs, GlobalSpec, OSHA), solve: {query}"
         return self.get_response(authority_prompt)
-        
+    
     def chunk_text(self, text, chunk_size=800, overlap=150):
         chunks = []
         start = 0
@@ -279,39 +282,39 @@ class UniversalChatbot:
         self.documents = []
         processed_files = []
         processed_sites = []
-        
+    
       # --- 1. Process Google Drive files
         if self.service:
             files = self.list_files_in_folder(folder_id, folder_name)
-            
+    
             if files:
                 files = files[:10]
                 print(f"📁 Processing {len(files)} files from Google Drive")
-                
+    
                 for file_info in files:
                     file_id = file_info['id']
                     file_name = file_info['name']
                     mime_type = file_info['mimeType']
                     file_type = file_info['file_type']
-                    
+    
                     print(f"📄 Processing {file_type}: {file_name}")
-                    
+    
                     try:
                         file_content = self.download_file_content(file_id, mime_type)
-                        
+    
                         if file_content:
                             text = self.extract_text_from_file(file_content, file_name, file_type)
-                            
+    
                             if text.strip():
                                 chunks = self.chunk_text(text)
-                                
+    
                                 for i, chunk in enumerate(chunks):
                                     self.documents.append({
                                         'source': file_name,
                                         'file_type': file_type,
                                         'content': chunk
                                     })
-                                
+    
                                 processed_files.append({
                                     'name': file_name,
                                     'type': file_type,
@@ -323,7 +326,7 @@ class UniversalChatbot:
                     except Exception as e:
                         print(f"    ❌ Error: {e}")
                         continue
-                        
+    
        # --- 2. Process Websites ---
         if website_urls:
             urls = [url.strip() for url in website_urls.split('\n') if url.strip()]
@@ -348,25 +351,25 @@ class UniversalChatbot:
                     except Exception as e:
                         print(f"    ❌ Error: {e}")
                         continue
-        
+    
         # --- 3. Finalize Knowledge Base ---
         all_processed = processed_files + processed_sites
         if not self.documents:
             raise ValueError("No content could be extracted from any sources")
-        
+    
         print(f"\n📊 Processing Summary:")
         print(f"   • Files processed: {len(processed_files)}")
         print(f"   • Websites processed: {len(processed_sites)}")
         print(f"   • Total text chunks: {len(self.documents)}")
-        
+    
         print("\n🔄 Creating embeddings...")
         all_chunks = [doc['content'] for doc in self.documents]
         self.embeddings = self.embedding_model.encode(all_chunks)
-        
+    
         dimension = self.embeddings.shape[1]
         self.index = faiss.IndexFlatL2(dimension)
         self.index.add(self.embeddings.astype('float32'))
-        
+    
         print("✅ Ready to chat!")
         return all_processed
     
@@ -384,12 +387,12 @@ class UniversalChatbot:
         """The ONLY method that uses AI provider - everything else is universal!"""
         if not self.index:
             return "Please load your training modules in the sidebar first."
-        
+    
         # 1. Search for relevant technical context
         relevant_chunks = self.search_similar_chunks(question, k=3)
         context = "\n\n".join([chunk['content'] for chunk in relevant_chunks])
         sources = list(set([f"{chunk['source']} ({chunk['file_type']})" for chunk in relevant_chunks]))
-        
+    
         # 2. Create the Engineering-Focused Prompt
         prompt = f"""Answer the user's question using the information from these sources. 
         If the question involves a calculation and the formula is in the sources, perform the calculation.
@@ -405,16 +408,17 @@ Answer naturally:"""
         try:
             # THIS is the ONLY line that changes between AI providers!
             answer = self.ai_provider.get_response(prompt)
-            
+    
             if sources:
                 answer += f"\n\n**Sources:** {', '.join(sources)}"
-            
+    
             return answer
-            
+    
         except Exception as e:
             return f"Error getting response from AI: {str(e)}"
 
 # Streamlit Interface (Universal for ALL AI providers!)
+
 def main():
     # Keep your original branding
     st.set_page_config(page_title="Universal AI Chatbot", page_icon="🤖")
@@ -422,14 +426,14 @@ def main():
     # --- SECURITY GATE START ---
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
-
+    
     if not st.session_state.authenticated:
         st.title("🤖 Universal AI Chatbot")
         st.markdown("### 🔐 Secure Access")
-        
+    
         # Password Input
         access_code = st.text_input("Enter Access Code:", type="password")
-        
+    
         if st.button("Unlock Chatbot"):
             if access_code == "Sree2026":
                 st.session_state.authenticated = True
@@ -439,19 +443,19 @@ def main():
                 st.error("Incorrect code.")
         return # This ensures the rest of the 587 lines don't run yet
     # --- SECURITY GATE END ---
-
+    
     # The rest of your original code continues below...
-
+    
     # --- THE ACADEMY ENGINE ---
     selected_step = st.session_state.get('academy_step')
-
+    
     # This pulls the text from your chatbot's processed sources
-    if "chatbot" in st.session_state and st.session_state.chatbot.all_text:
+    if "chatbot" in st.session_state and hasattr(st.session_state.chatbot, 'all_text') and st.session_state.chatbot.all_text:
         manual_content = st.session_state.chatbot.all_text
     else:
         # Fallback to the variable we just created
         manual_content = st.session_state.get('manual_text', '')
-
+    
     if selected_step:
         import academy_logic
         academy_logic.execute_academy_step(selected_step, manual_content)
@@ -459,16 +463,17 @@ def main():
     else:
         st.info("Select a Step from the 'Skill Validation' sidebar to begin your Maps Academy training.")
         st.markdown("**Works with OpenAI, Gemini, Claude, or any AI provider!**")
-    
-   # Sidebar configuration
+
+# Sidebar configuration
+
     with st.sidebar:
         st.header("🧠 Choose Your AI")
-        
+    
         ai_choice = st.selectbox(
             "Select AI Provider:",
             ["Gemini (Free)", "OpenAI (Paid)", "Claude (Paid)"]
         )
-        
+    
         # Get API key based on choice
         if ai_choice.startswith("Gemini"):
             api_key = st.text_input("Gemini API Key:", type="password")
@@ -479,47 +484,47 @@ def main():
         else:  # Claude
             api_key = st.text_input("Claude API Key:", type="password")
             st.caption("Get key from https://console.anthropic.com")
-        
+    
         # --- NEW: MAPS ACADEMY CONTROLS INSERTED HERE ---
         st.divider()
         st.header("🎓 Maps Academy")
-        
+    
         if st.button("📊 Step 1: Generate Presentation"):
             st.session_state['academy_step'] = "Step 1: Fixed Presentation"
             st.rerun()
-
+    
         if st.button("👨‍🏫 Step 2: Open Tutor Mode"):
             st.session_state['academy_step'] = "Step 2: The Tutor"
             st.rerun()
-
+    
         if st.button("🎓 Step 3: Generate Graduation Quiz"):
             st.session_state['academy_step'] = "Step 3: Graduation Quiz"
             st.rerun()
-
+    
         if st.button("💬 Return to Chat"):
             st.session_state['academy_step'] = None
             st.rerun()
         st.divider()
         # -----------------------------------------------
-
+    
         st.header("📁 Google Drive Setup")
         uploaded_json = st.file_uploader("Upload Google Service Account JSON", type="json")
-        
+    
         folder_option = st.radio(
             "Google Drive files:",
             ["Skip Drive", "Specific Folder by ID", "Specific Folder by Name"]
         )
-        
+    
         folder_id = None
         folder_name = None
         if folder_option == "Specific Folder by Name":
             folder_name = st.text_input("Folder Name:")
         elif folder_option == "Specific Folder by ID":
             folder_id = st.text_input("Folder ID:")
-        
+    
         st.header("🌐 Website Sources")
         website_urls = st.text_area("Website URLs (one per line):", height=100)
-
+    
        # --- NEW: UNIVERSAL FILE UPLOADER SECTION ---
         st.header("📤 Local Training Modules")
         manual_files = st.file_uploader(
@@ -527,7 +532,7 @@ def main():
             type=None, 
             accept_multiple_files=True
         )
-        
+    
         if st.button("🚀 Process All Sources"):
             if api_key:
                 try:
@@ -539,19 +544,19 @@ def main():
                             ai_provider = OpenAIProvider(api_key)
                         else:  # Claude
                             ai_provider = ClaudeProvider(api_key)
-                        
+    
                         # Get credentials if provided
                         credentials_json = None
                         if uploaded_json:
                             credentials_json = json.loads(uploaded_json.getvalue().decode())
-                        
+    
                         # Initialize universal chatbot
                         chatbot = UniversalChatbot(ai_provider, credentials_json)
                         st.session_state.chatbot = chatbot
-                        
+    
                         # Start processing
                         all_processed = []
-
+    
                         # 1. Process Google Drive & Websites
                         try:
                             drive_web_sources = chatbot.process_all_sources(
@@ -562,30 +567,30 @@ def main():
                             all_processed.extend(drive_web_sources)
                         except:
                             pass # Continue if Drive/Web is empty
-
+    
                         # 2. Process Manually Uploaded Files
                         if manual_files:
                             for uploaded_file in manual_files:
                                 file_content = uploaded_file.read()
                                 file_name = uploaded_file.name
-                                
+    
                                 text = ""
                                 if file_name.endswith('.pdf'):
                                     # Process as standard text
                                     text = chatbot._extract_from_pdf(file_content)
                                     # ALSO process as technical data
                                     chatbot.load_technical_data(file_content, file_name)
-                                    
+    
                                 elif file_name.endswith('.docx'):
                                     text = chatbot._extract_from_word(file_content)
-                                    
+    
                                 elif file_name.endswith('.csv'):
                                     chatbot.load_technical_data(file_content, file_name)
                                     text = "" 
-                                    
+    
                                 elif file_name.endswith(('.txt', '.md')):
                                     text = file_content.decode('utf-8')
-                                
+    
                                 # Add readable text to knowledge base
                                 if text.strip():
                                     chunks = chatbot.chunk_text(text)
@@ -600,7 +605,7 @@ def main():
                                         'type': file_name.split('.')[-1].upper(),
                                         'chunks': len(chunks)
                                     })
-                        
+    
                         # Re-initialize index if documents were added
                         if chatbot.documents:
                             all_chunks = [doc['content'] for doc in chatbot.documents]
@@ -608,20 +613,18 @@ def main():
                             dimension = chatbot.embeddings.shape[1]
                             chatbot.index = faiss.IndexFlatL2(dimension)
                             chatbot.index.add(chatbot.embeddings.astype('float32'))
-
-                        chatbot.index.add(chatbot.embeddings.astype('float32'))
-
-                        # --- PASTE HERE ---
+    
+                        # --- THE DATA BRIDGE ---
                         st.session_state.processed_sources = all_processed
                         st.session_state['manual_text'] = "\n".join([item['content'] for item in all_processed if isinstance(item, dict) and 'content' in item])
-                        
+    
                         st.success(f"✅ Ready! Loaded {len(all_processed)} sources.")
-                                                
-                    except Exception as e:
+    
+                except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
-                else:
-                    st.error("Please provide API key")
-          
+            else:
+                st.error("Please provide API key")
+    
         # Display processed sources
         if hasattr(st.session_state, 'processed_sources'):
             st.subheader("📚 Loaded Sources")
@@ -630,13 +633,14 @@ def main():
                 if len(source_name) > 30:
                     source_name = source_name[:27] + "..."
                 st.text(f"✅ {source_name} ({source_info['chunks']} chunks)")
-    
-   # --- BRANDED CHAT INTERFACE WITH VOICE ---
+
+# --- BRANDED CHAT INTERFACE WITH VOICE ---
+
     from streamlit_mic_recorder import mic_recorder
     
     sree_icon = "https://raw.githubusercontent.com/Sreeni253/maps-academy/main/kalpavruksha.png"
     enquirer_icon = "💡" 
-
+    
     if "messages" not in st.session_state:
         st.session_state.messages = []
     
@@ -647,28 +651,28 @@ def main():
             if message["role"] == "assistant":
                 st.markdown(":blue[**Sree**]") 
             st.markdown(message["content"])
-
+    
     # 2. Voice and Text Input Section
     footer_col1, footer_col2 = st.columns([1, 9])
     
     with footer_col1:
         audio = mic_recorder(start_prompt="🎤", stop_prompt="🛑", key='sree_mic')
-
+    
     with footer_col2:
         prompt = st.chat_input("Speak with Sree...")
-
+    
     # 3. Process Input
     final_prompt = None
     if audio and audio.get('text'):
         final_prompt = audio['text']
     elif prompt:
         final_prompt = prompt
-
+    
     if final_prompt:
         st.session_state.messages.append({"role": "user", "content": final_prompt})
         with st.chat_message("user", avatar=enquirer_icon):
             st.markdown(final_prompt)
-        
+    
         if hasattr(st.session_state, 'chatbot'):
             with st.chat_message("assistant", avatar=sree_icon):
                 st.markdown(":blue[**Sree**]")
@@ -676,8 +680,8 @@ def main():
                     response = st.session_state.chatbot.get_response(final_prompt)
                     st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
-
-        # --- PASTE THE QUIZ MODULE HERE (Indented 4 spaces) ---
+    
+        # --- PASTE THE QUIZ MODULE HERE ---
         st.sidebar.divider()
         st.sidebar.subheader("🎓 Skill Validation")
         if st.sidebar.button("📝 Generate Graduation Quiz"):
@@ -690,28 +694,20 @@ def main():
                             "Multiple Choice Quiz. Provide the questions first, "
                             "followed by an 'Answer Key' section at the bottom."
                             )
-                        quiz_response = st.session_state.chatbot.ask_question(quiz_query)
+                        quiz_response = st.session_state.chatbot.get_response(quiz_query)
                         st.session_state.current_quiz = quiz_response
             else:
                 st.sidebar.warning("Please upload and process files first!")
-
-                # Display the quiz in the main area
-                if "current_quiz" in st.session_state:
-                    st.markdown("---")
-                    st.markdown("### 📝 Sree's Graduation Quiz")
-                    st.write(st.session_state.current_quiz)
-                        
-  
-    # This block must be indented exactly 4 spaces to stay inside main()
+    
+    # This block displays the quiz in the main area
     if "current_quiz" in st.session_state:
         st.markdown("---")
         st.subheader("🎓 Sree's Graduation Quiz")
         st.write(st.session_state.current_quiz)
-            
-        # This button is now on the 'Main Stage' and will stay visible
+    
         if st.button("🗑️ Clear Quiz and Return to Chat", key="final_close_btn"):
             del st.session_state.current_quiz
             st.rerun()
-        # --- END COPY ---
+
 if __name__ == "__main__":
     main()
