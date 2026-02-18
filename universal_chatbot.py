@@ -656,8 +656,13 @@ def main():
             with st.chat_message("assistant", avatar=sree_icon):
                 st.markdown(":blue[**Sree**]")
                 with st.spinner("Sree is consulting the training modules..."):
-                    response = st.session_state.chatbot.get_response(final_prompt)
+                    response = st.session_state.chatbot.ask_question(final_prompt)
                     st.markdown(response)
+                    
+                    # --- ADD THIS LINE TO SAVE THE PRESENTATION ---
+                    if st.session_state.get('academy_step') == "Step 1: Fixed Presentation":
+                        st.session_state.current_presentation = response
+            
             st.session_state.messages.append({"role": "assistant", "content": response})
     
         st.sidebar.divider()
