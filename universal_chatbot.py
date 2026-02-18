@@ -4,7 +4,6 @@ import os
 # This tells your chatbot to look inside the 'backend' folder for the academy code
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 import academy_logic
-
 import streamlit as st
 import PyPDF2
 import io
@@ -457,6 +456,7 @@ def main():
     if "chatbot" in st.session_state and hasattr(st.session_state.chatbot, 'all_text') and st.session_state.chatbot.all_text:
         manual_content = st.session_state.chatbot.all_text
     else:
+        # Fallback to the variable we just created
         manual_content = st.session_state.get('manual_text', '')
 
     if selected_step:
