@@ -647,43 +647,43 @@ def main():
     elif prompt:
         final_prompt = prompt
     
-   if final_prompt:
-        st.session_state.messages.append({"role": "user", "content": final_prompt})
-        with st.chat_message("user", avatar=enquirer_icon):
-            st.markdown(final_prompt)
-    
-        if "chatbot" in st.session_state and st.session_state.chatbot is not None:
-            try:
+        if final_prompt:
+            st.session_state.messages.append({"role": "user", "content": final_prompt})
+            with st.chat_message("user", avatar=enquirer_icon):
+                st.markdown(final_prompt)
+        
+            if "chatbot" in st.session_state and st.session_state.chatbot is not None:
+                try:
+                    with st.chat_message("assistant", avatar=sree_icon):
+                        st.markdown(":blue[**Sree**]")
+                        with st.spinner("Sree is consulting the training modules..."):
+                            # --- ALIGNMENT FIX: Use 'get_response' instead of 'ask_question' ---
+                            response = st.session_state.chatbot.get_response(final_prompt)
+                            st.markdown(response)
+                            
+                            # Bridge to Academy Screen
+                            if st.session_state.get('academy_step') == "Step 1: Fixed Presentation":
+                                st.session_state['current_presentation'] = response
+                                st.rerun()
+                    
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                except Exception as e:
+                    st.error(f"❌ Smithy Error: {str(e)}")
+            else:
+                st.warning("⚠️ Smithy is cold! Please upload your manual and click '🚀 Process All Sources' first.")
+        
+            if hasattr(st.session_state, 'chatbot'):
                 with st.chat_message("assistant", avatar=sree_icon):
                     st.markdown(":blue[**Sree**]")
                     with st.spinner("Sree is consulting the training modules..."):
-                        # --- ALIGNMENT FIX: Use 'get_response' instead of 'ask_question' ---
-                        response = st.session_state.chatbot.get_response(final_prompt)
+                        response = st.session_state.chatbot.ask_question(final_prompt)
                         st.markdown(response)
                         
-                        # Bridge to Academy Screen
+                        # --- ADD THIS LINE TO SAVE THE PRESENTATION ---
                         if st.session_state.get('academy_step') == "Step 1: Fixed Presentation":
-                            st.session_state['current_presentation'] = response
-                            st.rerun()
+                            st.session_state.current_presentation = response
                 
                 st.session_state.messages.append({"role": "assistant", "content": response})
-            except Exception as e:
-                st.error(f"❌ Smithy Error: {str(e)}")
-        else:
-            st.warning("⚠️ Smithy is cold! Please upload your manual and click '🚀 Process All Sources' first.")
-    
-        if hasattr(st.session_state, 'chatbot'):
-            with st.chat_message("assistant", avatar=sree_icon):
-                st.markdown(":blue[**Sree**]")
-                with st.spinner("Sree is consulting the training modules..."):
-                    response = st.session_state.chatbot.ask_question(final_prompt)
-                    st.markdown(response)
-                    
-                    # --- ADD THIS LINE TO SAVE THE PRESENTATION ---
-                    if st.session_state.get('academy_step') == "Step 1: Fixed Presentation":
-                        st.session_state.current_presentation = response
-            
-            st.session_state.messages.append({"role": "assistant", "content": response})
     
         st.sidebar.divider()
         st.sidebar.subheader("🎓 Skill Validation")
