@@ -652,28 +652,28 @@ def main():
         with st.chat_message("user", avatar=enquirer_icon):
             st.markdown(final_prompt)
     
-        # --- THE SAFETY CHECK START ---
-        # We only try to ask the question IF the chatbot is fully loaded in session_state
         if "chatbot" in st.session_state and st.session_state.chatbot is not None:
             try:
                 with st.chat_message("assistant", avatar=sree_icon):
                     st.markdown(":blue[**Sree**]")
                     with st.spinner("Sree is consulting the training modules..."):
-                        # Use the correct method name 'ask_question'
                         response = st.session_state.chatbot.ask_question(final_prompt)
                         st.markdown(response)
                         
-                        # Anchor for Academy Presentation
+                        # --- THE CRITICAL DATA BRIDGE ---
+                        # This forces the presentation to save regardless of source
                         if st.session_state.get('academy_step') == "Step 1: Fixed Presentation":
                             st.session_state.current_presentation = response
+                            
+                        # Update manual_text for Step 2 and Step 3
+                        if hasattr(st.session_state.chatbot, 'documents'):
+                            st.session_state['manual_text'] = "\n".join([doc['content'] for doc in st.session_state.chatbot.documents])
                 
                 st.session_state.messages.append({"role": "assistant", "content": response})
-            except AttributeError:
-                st.error("❌ Logic Error: The Chatbot engine is loaded but doesn't recognize the 'ask_question' command. Please re-click 'Process All Sources'.")
+            except Exception as e:
+                st.error(f"❌ Logic Error: {str(e)}")
         else:
-            # This handles the case where the user types before clicking 'Process'
-            st.warning("⚠️ Please upload your manual and click '🚀 Process All Sources' in the sidebar first!")
-        # --- THE SAFETY CHECK END ---
+            st.warning("⚠️ Please upload your manual and click '🚀 Process All Sources' first!")
     
         if hasattr(st.session_state, 'chatbot'):
             with st.chat_message("assistant", avatar=sree_icon):
