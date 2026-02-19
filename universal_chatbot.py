@@ -647,7 +647,7 @@ def main():
     elif prompt:
         final_prompt = prompt
     
-    if final_prompt:
+   if final_prompt:
         st.session_state.messages.append({"role": "user", "content": final_prompt})
         with st.chat_message("user", avatar=enquirer_icon):
             st.markdown(final_prompt)
@@ -657,14 +657,13 @@ def main():
                 with st.chat_message("assistant", avatar=sree_icon):
                     st.markdown(":blue[**Sree**]")
                     with st.spinner("Sree is consulting the training modules..."):
-                        # 1. Get the answer from the AI
-                        response = st.session_state.chatbot.ask_question(final_prompt)
+                        # --- ALIGNMENT FIX: Use 'get_response' instead of 'ask_question' ---
+                        response = st.session_state.chatbot.get_response(final_prompt)
                         st.markdown(response)
                         
-                        # 2. THE MASTER LINK: Force the save to the Academy Screen
+                        # Bridge to Academy Screen
                         if st.session_state.get('academy_step') == "Step 1: Fixed Presentation":
                             st.session_state['current_presentation'] = response
-                            # This line forces Streamlit to refresh and show the text immediately
                             st.rerun()
                 
                 st.session_state.messages.append({"role": "assistant", "content": response})
