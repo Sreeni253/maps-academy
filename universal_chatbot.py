@@ -650,6 +650,7 @@ def main():
     
     # --- ADD THE LANGUAGE BUTTONS HERE ---
     # This captures the choice right as the user hits Enter
+    # 1. Place the language buttons outside the response logic
     selected_lang = st.segmented_control(
         "Response Language:", 
         options=["English", "Hindi", "Telugu"], 
@@ -658,17 +659,33 @@ def main():
     )
 
     if final_prompt:
-        # Add the language instruction to the prompt secretly
-        # This tells Ollama: "Answer the user, but use this language."
-        final_prompt = f"{final_prompt} (Please respond only in {selected_lang})"
-
+        # 2. CREATE the secret translated prompt for the AI
+        translated_prompt = f"{final_prompt} (Please respond only in {selected_lang})"
+        
+        # 3. DISPLAY the original question (Clean, no secret instructions)
         st.session_state.messages.append({"role": "user", "content": final_prompt})
         with st.chat_message("user", avatar=enquirer_icon):
             st.markdown(final_prompt)
-        if final_prompt:
-            st.session_state.messages.append({"role": "user", "content": final_prompt})
-            with st.chat_message("user", avatar=enquirer_icon):
-                st.markdown(final_prompt)
+
+        # 4. SAFETY CHECK: Only ask if the chatbot engine is ready
+        if st.session_state.get('chatbot') is not None:
+            try:
+                # Use the 'translated_prompt' for the brain, but original for history
+                response = st.session_state.chatbot.ask_question(translated_prompt)
+                
+                with st.chat_message("assistant", avatar=sree_icon):
+                    st.markdown(response)
+                    # This is where your voice engine will go next
+                    # universal_speak(response, language=selected_lang)
+                    
+                # Save the AI response to history
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                
+            except Exception as e:
+                st.error(f"Brain Error: {e}")
+        else:
+            # This handles the AttributeError by giving a helpful warning instead
+            st.warning("Please 'Process All Sources' in the sidebar first!")
         
             if "chatbot" in st.session_state and st.session_state.chatbot is not None:
                 try:
