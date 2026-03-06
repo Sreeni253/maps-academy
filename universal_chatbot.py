@@ -646,7 +646,25 @@ def main():
         final_prompt = audio['text']
     elif prompt:
         final_prompt = prompt
+        final_prompt = prompt 
     
+    # --- ADD THE LANGUAGE BUTTONS HERE ---
+    # This captures the choice right as the user hits Enter
+    selected_lang = st.segmented_control(
+        "Response Language:", 
+        options=["English", "Hindi", "Telugu"], 
+        default="English",
+        key="user_lang_choice"
+    )
+
+    if final_prompt:
+        # Add the language instruction to the prompt secretly
+        # This tells Ollama: "Answer the user, but use this language."
+        final_prompt = f"{final_prompt} (Please respond only in {selected_lang})"
+
+        st.session_state.messages.append({"role": "user", "content": final_prompt})
+        with st.chat_message("user", avatar=enquirer_icon):
+            st.markdown(final_prompt)
         if final_prompt:
             st.session_state.messages.append({"role": "user", "content": final_prompt})
             with st.chat_message("user", avatar=enquirer_icon):
