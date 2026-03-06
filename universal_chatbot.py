@@ -693,7 +693,11 @@ def main():
                         st.markdown(":blue[**Sree**]")
                         with st.spinner("Sree is consulting the training modules..."):
                             # --- ALIGNMENT FIX: Use 'get_response' instead of 'ask_question' ---
-                            response = st.session_state.chatbot.get_response(final_prompt)
+                            # Change this:
+                            response = st.session_state.chatbot.ask_question(translated_prompt)
+                            
+                            # To this (Check your backend for the real name):
+                            response = st.session_state.chatbot.get_response(translated_prompt)
                             st.markdown(response)
                             
                             # Bridge to Academy Screen
