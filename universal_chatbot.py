@@ -1,76 +1,85 @@
-import os, streamlit as st, PyPDF2, io, requests, re, graphviz, faiss, numpy as np, base64
-from docx import Document
+import os, streamlit as st, PyPDF2, io, requests, re, base64, faiss, numpy as np
 from pptx import Presentation
 from sentence_transformers import SentenceTransformer
 from gtts import gTTS
 
-# --- 1. CLOUD BRAIN (Gemini Adapter with Safety Check) ---
-class CloudChatbot:
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+# --- 1. CONFIG & BRAIN ---
+st.set_page_config(page_title="MAPS Master", layout="wide")
+if 'msg' not in st.session_state: st.session_state.msg = []
+if 'idx' not in st.session_state:
+    st.session_state.idx, st.session_state.model = None, SentenceTransformer('all-MiniLM-L6-v2')
+if 'docs' not in st.session_state: st.session_state.docs = []
 
-    def get_response(self, prompt):
-        try:
-            payload = {"contents": [{"parts": [{"text": prompt}]}]}
-            r = requests.post(self.url, json=payload, timeout=30)
-            data = r.json()
-            # FIX: Check if 'candidates' exists to prevent the crash you saw
-            if 'candidates' in data and data['candidates']:
-                return data['candidates'][0]['content']['parts'][0]['text']
-            return "⚠️ Sree couldn't find an answer. Check your API key or manual content."
-        except Exception as e: return f"Cloud Brain Error: {e}"
+def get_sree_response(api, prompt):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api}"
+    try:
+        r = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=30).json()
+        if 'candidates' in r: return r['candidates'][0]['content']['parts'][0]['text']
+        return "⚠️ Brain Error: No response. Check API Key or Safety Filters."
+    except Exception as e: return f"Error: {e}"
 
-# --- 2. THE UI & SIDEBAR (Restoring Drive/Web) ---
-st.set_page_config(page_title="MAPS Academy Cloud", layout="wide")
+# --- 2. TOOLS (Voice & PPT) ---
+def speak(text, lang):
+    l_code = {"English": "en", "Hindi": "hi", "Telugu": "te"}.get(lang, "en")
+    try:
+        fp = io.BytesIO(); gTTS(text=text[:500], lang=l_code).write_to_fp(fp); fp.seek(0)
+        b64 = base64.b64encode(fp.read()).decode()
+        st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}"></audio>', unsafe_allow_html=True)
+    except: pass
 
-if 'messages' not in st.session_state: st.session_state.messages = []
-if 'index' not in st.session_state:
-    st.session_state.index, st.session_state.embedder = None, SentenceTransformer('all-MiniLM-L6-v2')
-
+# --- 3. UI SIDEBAR (With Deep Processing) ---
 with st.sidebar:
-    st.title("👩‍💻 Cloud Admin")
-    api_key = st.text_input("Enter Gemini API Key:", type="password")
+    st.title("👩‍💻 MAPS Admin")
+    api = st.text_input("Gemini API Key:", type="password")
     
-    # RESTORED: Google Drive & Web Fields
-    st.header("🌐 External Sources")
-    web_urls = st.text_area("Website URLs (one per line):")
-    drive_id = st.text_input("Google Drive Folder ID (Optional):")
+    st.divider()
+    files = st.file_uploader("Upload Training Manuals", accept_multiple_files=True, type=['pdf'])
     
-    st.header("📤 Local Training Modules")
-    files = st.file_uploader("Upload Manuals", accept_multiple_files=True)
-    
-    if st.button("🚀 Process All Sources") and files:
-        chunks, src = [], []
-        for f in files:
-            if f.name.endswith('.pdf'):
-                pdf = PyPDF2.PdfReader(f)
-                for i, p in enumerate(pdf.pages):
-                    txt = p.extract_text()
-                    if txt: chunks.append(txt); src.append(f"{f.name} (p.{i+1})")
-        # Add indexing logic here...
-        if chunks:
-            embs = st.session_state.embedder.encode(chunks)
-            st.session_state.index = faiss.IndexFlatL2(embs.shape[1])
-            st.session_state.index.add(np.array(embs).astype('float32'))
-            st.session_state.docs = chunks
-            st.success(f"✅ Loaded {len(chunks)} chunks!")
+    if st.button("🚀 Deep Process Manuals") and files:
+        with st.spinner("Sree is reading every page..."):
+            all_chunks = []
+            for f in files:
+                try:
+                    # Reading the file immediately into bytes to prevent cloud timeout
+                    bytes_data = f.read()
+                    pdf_reader = PyPDF2.PdfReader(io.BytesIO(bytes_data))
+                    for i, page in enumerate(pdf_reader.pages):
+                        text = page.extract_text()
+                        if text and len(text.strip()) > 10:
+                            all_chunks.append(f"Source: {f.name} (p.{i+1})\n\n{text}")
+                except Exception as e: st.error(f"Error reading {f.name}: {e}")
+            
+            if all_chunks:
+                # Encoding into FAISS Memory
+                embs = st.session_state.model.encode(all_chunks)
+                st.session_state.idx = faiss.IndexFlatL2(embs.shape[1])
+                st.session_state.idx.add(np.array(embs).astype('float32'))
+                st.session_state.docs = all_chunks
+                st.success(f"✅ Sree memorized {len(all_chunks)} pages!")
+            else:
+                st.warning("⚠️ No text found. Are the PDFs scanned images? (Sree needs digital text)")
 
-# --- 3. MAIN CHAT & LANGUAGES ---
-st.title("📂 MAPS Academy Master Assistant")
-selected_lang = st.segmented_control("Language:", options=["English", "Hindi", "Telugu"], default="English")
+# --- 4. CHAT ---
+st.title("📂 MAPS Academy Assistant")
+for m in st.session_state.msg:
+    with st.chat_message(m["role"]): st.markdown(m["content"])
+
+lang = st.segmented_control("Language:", ["English", "Hindi", "Telugu"], default="English")
 
 if prompt := st.chat_input("Ask Sree..."):
-    if not api_key: st.warning("Enter API Key!")
+    if not api: st.warning("API Key missing")
     else:
-        # Retrieval Logic
-        context = ""
-        if st.session_state.index:
-            q_emb = st.session_state.embedder.encode([prompt])
-            D, I = st.session_state.index.search(np.array(q_emb).astype('float32'), k=2)
-            context = "\n".join([st.session_state.docs[idx] for idx in I[0]])
-
+        st.session_state.msg.append({"role": "user", "content": prompt})
+        with st.chat_message("user"): st.markdown(prompt)
+        
+        ctx = ""
+        if st.session_state.idx:
+            # Search context
+            D, I = st.session_state.idx.search(np.array(st.session_state.model.encode([prompt])).astype('float32'), k=3)
+            ctx = "\n---\n".join([st.session_state.docs[i] for i in I[0]])
+            
         with st.chat_message("assistant"):
-            bot = CloudChatbot(api_key)
-            resp = bot.get_response(f"Context: {context}\n\nQuestion: {prompt}. Answer in {selected_lang}.")
-            st.markdown(resp)
+            full_p = f"You are Sree, instructor at MAPS Academy. Use this context: {ctx}\n\nQuestion: {prompt}. Answer in {lang}."
+            res = get_sree_response(api, full_p)
+            st.markdown(res); speak(res, lang)
+            st.session_state.msg.append({"role": "assistant", "content": res})
