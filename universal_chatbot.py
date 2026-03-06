@@ -694,7 +694,7 @@ def main():
                         with st.spinner("Sree is consulting the training modules..."):
                             # --- ALIGNMENT FIX: Use 'get_response' instead of 'ask_question' ---
                             # Change this:
-                            response = st.session_state.chatbot.ask_question(translated_prompt)
+                            response = st.session_state.chatbot.get_response(translated_prompt)
                             
                             # To this (Check your backend for the real name):
                             response = st.session_state.chatbot.get_response(translated_prompt)
